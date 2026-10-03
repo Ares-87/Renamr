@@ -63,6 +63,7 @@ public sealed class TmdbTvProvider(ISettingsStore settings, TmdbClientAccessor c
                 TvShow? details = null;
                 TvEpisode? episode = null;
                 string? episodeTitle = null;
+                var translated = true;
                 (int Season, int Episode)? number = null;
                 if (result.Count == 0)
                 {
@@ -79,6 +80,7 @@ public sealed class TmdbTvProvider(ISettingsStore settings, TmdbClientAccessor c
                             // Episodio non ancora tradotto: meglio il titolo inglese che "Episodio 5".
                             var english = await GetEpisodeAsync(client, show.Id, n.Season, n.Episode, "en-US", cancellationToken).ConfigureAwait(false);
                             episodeTitle = UsefulEpisodeTitle(english?.Name);
+                            translated = false;
                         }
                     }
                     if (episode is null)
@@ -99,6 +101,7 @@ public sealed class TmdbTvProvider(ISettingsStore settings, TmdbClientAccessor c
                     Episode = number?.Episode ?? query.Episode,
                     AbsoluteEpisode = query.AbsoluteEpisode,
                     EpisodeTitle = episodeTitle,
+                    EpisodeTitleLocalized = translated,
                     ReleaseDate = episode?.AirDate is { } aired ? DateOnly.FromDateTime(aired) : null,
                     YearOnly = (details?.FirstAirDate ?? show.FirstAirDate)?.Year,
                     Overview = string.IsNullOrWhiteSpace(episode?.Overview) ? details?.Overview : episode.Overview,

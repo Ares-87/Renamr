@@ -12,6 +12,9 @@ public sealed record ParsedMediaName
     /// <summary>Titolo pulito (film, serie o anime).</summary>
     public required string Title { get; init; }
 
+    /// <summary>Titolo dell'episodio scritto nel nome file, se c'è ("Silo S03E01 Chi sei tu").</summary>
+    public string? EpisodeTitle { get; init; }
+
     public int? Year { get; init; }
     public int? Season { get; init; }
     public IReadOnlyList<int> Episodes { get; init; } = [];

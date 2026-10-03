@@ -103,7 +103,7 @@ tests/Renamr.Tests/          # 77 test xUnit + file multimediali minuscoli gener
 ## 6. Cosa è stato verificato e cosa no
 
 - `Renamr.Core`, `Renamr.Services`, `Renamr.Presentation` e i test **compilano con .NET 10 senza warning** (analizzatori `latest-recommended`, warning trattati come errori).
-- **93 test xUnit verdi**: parser, template, similarità e cascata dei provider, boundary check (traversal, prefissi, symlink), lock, ReadOnly, move senza sovrascrittura, date, scrittura tag reale su MP3/FLAC/MP4/MKV, pipeline completa (rinomina + tag + date + sottotitoli, dry run, file bloccato che non ferma la coda, conflitti, cartelle da template, annulla), ViewModel su un "thread UI" simulato, impostazioni cifrate.
+- **111 test xUnit verdi**: parser, template, similarità e cascata dei provider, boundary check (traversal, prefissi, symlink), lock, ReadOnly, move senza sovrascrittura, date, scrittura tag reale su MP3/FLAC/MP4/MKV, pipeline completa (rinomina + tag + date + sottotitoli, dry run, file bloccato che non ferma la coda, conflitti, cartelle da template, annulla), ViewModel su un "thread UI" simulato, impostazioni cifrate.
 - Le date scritte sono state controllate anche con **ffprobe**: `creation_time=1999-03-31T12:00:00Z` su MP4/M4A/MKV, `date=1999-03-31` su MP3.
 - I test girano su Linux: `SetCreationTimeUtc` lì non è verificabile (il test lo controlla solo su Windows) e i codici HRESULT Win32 sono coperti da test sul classificatore.
 - **Non compilato qui: `Renamr.App` (WinUI 3)**. Il compilatore XAML di Windows App SDK gira solo su Windows. I file XAML sono XML valido e i ViewModel a cui si legano sono compilati e testati, ma la prima build su Windows può richiedere piccoli ritocchi.
@@ -128,17 +128,19 @@ Poi: copiare `fpcalc.exe` in `src/Renamr.App/Tools/` per il riconoscimento acust
 | TMDb (serie, anime) | la stessa dei film | sì, serie ed episodi; se un episodio non è tradotto si usa il titolo inglese |
 | OMDb (film) | gratuita con limiti | no, solo inglese |
 | TheTVDB (serie) | registrazione | sì, traduzioni di serie ed episodi (`/translations/ita`) |
-| TVmaze (serie, anime) | nessuna | solo il titolo della serie, dagli AKA del paese; episodi in inglese |
+| TVmaze (serie, anime) | nessuna | solo il titolo della serie, dagli AKA del paese; episodi in inglese, quindi se il nome file contiene già il titolo dell'episodio ("Silo S03E01 Chi sei tu") si tiene quello |
 | AniDB (anime) | client gratuito | titolo ufficiale nella lingua se esiste, altrimenti romaji |
 | MusicBrainz (musica) | nessuna | non applicabile |
 | AcoustID (musica) | gratuita | non applicabile |
+
+La chiave TMDb può essere la "Chiave API" o il "Token di accesso in lettura" (la chiave viene estratta dal token). Se un database rifiuta la chiave o non risponde, l'anteprima lo dice con un avviso invece di passare in silenzio alla fonte successiva.
 
 La lingua si sceglie in Impostazioni ("it-IT"), dal selettore in basso o dal menu contestuale della lista; ogni provider la converte nel formato che usa (`LanguagePreference`). Cambiarla rifà subito le ricerche. Senza chiave TMDb l'app lo segnala con un avviso nell'anteprima, perché i titoli degli episodi resterebbero in inglese.
 
 ## 9. Scelte rapide e versione
 
 - **Tasto destro sulla lista**: formato del nome (preset in `TemplatePresets`, con anteprima sulla riga nel tooltip), lingua dei titoli, copia del nuovo nome, Esplora File. Un formato scelto diventa il template del tipo e i nomi si ricalcolano in locale (`RenamePlanner.Rerender`), senza nuove ricerche online.
-- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.1.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
+- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.2.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
 
 ## 10. Estendere
 

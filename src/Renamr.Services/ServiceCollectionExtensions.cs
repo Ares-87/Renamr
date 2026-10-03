@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMetadataProvider>(sp => ActivatorUtilities.CreateInstance<AniDbProvider>(sp, Client(sp, AniDbProvider.HttpClientName)));
         services.AddSingleton<IMetadataProvider>(sp => new AcoustIdProvider(Client(sp, AcoustIdProvider.HttpClientName), sp.GetRequiredService<ISettingsStore>()));
         services.AddSingleton<IMetadataProvider>(sp => new MusicBrainzProvider(Client(sp, MusicBrainzProvider.HttpClientName)));
+        services.AddSingleton<ProviderHealth>();
         services.AddSingleton<IMetadataResolver, CascadingMetadataResolver>();
 
         // Pipeline

@@ -77,6 +77,7 @@ public sealed partial class TvMazeProvider(HttpClient http, ISettingsStore? sett
                     Episode = episode?.Number ?? query.Episode,
                     AbsoluteEpisode = query.AbsoluteEpisode,
                     EpisodeTitle = episode?.Name,
+                    EpisodeTitleLocalized = LanguagePreference.From(settings?.Current.Matching.Language).IsEnglish, // TVmaze: episodi solo in inglese
                     ReleaseDate = ProviderHelpers.ParseDate(episode?.Airdate),
                     YearOnly = ProviderHelpers.ParseDate(show.Premiered)?.Year,
                     Overview = episode?.Summary is null ? null : Html().Replace(episode.Summary, string.Empty),

@@ -51,7 +51,7 @@ public sealed class SceneCleaner : IFileNameParser
         var hdr = FirstValue(SceneTags.DynamicRange(), name);
 
         // 4) Stagione / episodio.
-        var (season, episodes, episodeIndex) = FindEpisode(name);
+        var (season, episodes, episodeIndex, episodeEnd) = FindEpisode(name);
         int? absolute = null;
         var kind = episodes.Count > 0 ? MediaKind.Episode : MediaKind.Movie;
 
@@ -106,6 +106,7 @@ public sealed class SceneCleaner : IFileNameParser
             Extension = extension,
             Kind = kind,
             Title = title,
+            EpisodeTitle = episodes.Count > 0 ? EpisodeTitleAfter(name, episodeEnd, group) : null,
             Year = year,
             Season = season ?? (kind == MediaKind.Anime && absolute is null ? 1 : null),
             Episodes = episodes,
@@ -174,7 +175,35 @@ public sealed class SceneCleaner : IFileNameParser
         };
     }
 
-    private static (int? Season, IReadOnlyList<int> Episodes, int Index) FindEpisode(string name)
+    /// <summary>
+    /// Titolo dell'episodio già scritto nel nome, dopo "S01E02" ("Silo S03E01 Chi sei tu 2160p" ➔ "Chi sei tu").
+    /// Serve quando il database ha i titoli degli episodi solo in inglese.
+    /// </summary>
+    private static string? EpisodeTitleAfter(string name, int start, string? group)
+    {
+        if (start <= 0 || start >= name.Length)
+        {
+            return null;
+        }
+        var rest = name[start..];
+        var end = MinPositive(
+            FirstIndex(SceneTags.Resolution(), rest), FirstIndex(SceneTags.VideoCodec(), rest),
+            FirstIndex(SceneTags.DynamicRange(), rest), FirstIndex(SceneTags.AudioCodec(), rest),
+            FirstIndex(SceneTags.Year(), rest), FirstIndex(SceneTags.EpisodeTitleStop(), rest), rest.Length);
+        rest = rest[..end]; // "Show.S01E02.1080p" lascia solo "." ➔ nessun titolo
+        if (SceneTags.TrailingGroup().Match(rest) is { Success: true } g && g.Index == 0)
+        {
+            return null; // "Show.S01E02-GRP": solo il gruppo di release
+        }
+        if (group is not null && rest.EndsWith("-" + group, StringComparison.OrdinalIgnoreCase))
+        {
+            rest = rest[..^(group.Length + 1)];
+        }
+        var title = CleanTitle(rest);
+        return title.Length > 1 && title.Any(char.IsLetter) ? title : null;
+    }
+
+    private static (int? Season, IReadOnlyList<int> Episodes, int Index, int End) FindEpisode(string name)
     {
         var m = SceneTags.SeasonEpisode().Match(name);
         if (m.Success)
@@ -189,22 +218,22 @@ public sealed class SceneCleaner : IFileNameParser
             {
                 eps = Enumerable.Range(eps[0], eps[1] - eps[0] + 1).ToList();
             }
-            return (Int(m.Groups["s"].ValueSpan), eps, m.Index);
+            return (Int(m.Groups["s"].ValueSpan), eps, m.Index, m.Index + m.Length);
         }
 
         m = SceneTags.VerboseEpisode().Match(name);
         if (m.Success)
         {
-            return (Int(m.Groups["s"].ValueSpan), [Int(m.Groups["e"].ValueSpan)], m.Index);
+            return (Int(m.Groups["s"].ValueSpan), [Int(m.Groups["e"].ValueSpan)], m.Index, m.Index + m.Length);
         }
 
         m = SceneTags.CrossFormat().Match(name);
         if (m.Success && !SceneTags.Resolution().IsMatch(m.Value))
         {
-            return (Int(m.Groups["s"].ValueSpan), [Int(m.Groups["e"].ValueSpan)], m.Index);
+            return (Int(m.Groups["s"].ValueSpan), [Int(m.Groups["e"].ValueSpan)], m.Index, m.Index + m.Length);
         }
 
-        return (null, [], -1);
+        return (null, [], -1, -1);
     }
 
     private static (int? Year, int Index) FindYear(string name)
