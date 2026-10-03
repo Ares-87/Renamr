@@ -1,0 +1,126 @@
+# Builds Renamr for Windows and Linux on every pull request and push to main.
+# Pushing a tag like "v1.10.0" also publishes a GitHub release with the packages attached
+# (GitHub adds the source code zip and tar.gz to every release on its own).
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        name: Read the version from Directory.Build.props
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Renamr $version"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match <Version>$version</Version> in Directory.Build.props"
+            exit 1
+          fi
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet test tests/Renamr.Tests -c Release
+
+  linux:
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rid: [linux-x64, linux-arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Publish
+        run: dotnet publish src/Renamr.Linux -c Release -r ${{ matrix.rid }} --self-contained -o out/Renamr
+      - name: Package
+        run: |
+          cp assets/brand/renamr-icon-512.png out/Renamr/renamr.png
+          name=Renamr-${{ needs.version.outputs.version }}-${{ matrix.rid }}
+          tar -czf "$name.tar.gz" -C out Renamr
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Renamr-${{ matrix.rid }}
+          path: Renamr-*.tar.gz
+          if-no-files-found: error
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        platform: [x64, ARM64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Publish
+        shell: pwsh
+        run: |
+          $rid = if ('${{ matrix.platform }}' -eq 'x64') { 'win-x64' } else { 'win-arm64' }
+          dotnet publish src/Renamr.App -c Release -r $rid -p:Platform=${{ matrix.platform }} --self-contained -o out/Renamr
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path out/Renamr/Renamr.exe)) { throw 'Renamr.exe missing from the publish folder' }
+      - name: Package
+        shell: pwsh
+        run: |
+          $rid = if ('${{ matrix.platform }}' -eq 'x64') { 'win-x64' } else { 'win-arm64' }
+          Compress-Archive -Path out/Renamr -DestinationPath "Renamr-${{ needs.version.outputs.version }}-$rid.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Renamr-${{ matrix.platform }}-windows
+          path: Renamr-*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, test, linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: ls -la dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Renamr ${{ needs.version.outputs.version }}
+          generate_release_notes: true
+          body: |
+            | System | Download |
+            |---|---|
+            | Windows 10/11, Intel or AMD | `Renamr-${{ needs.version.outputs.version }}-win-x64.zip` |
+            | Windows 11 on ARM | `Renamr-${{ needs.version.outputs.version }}-win-arm64.zip` |
+            | Linux x64 | `Renamr-${{ needs.version.outputs.version }}-linux-x64.tar.gz` |
+            | Linux ARM64 | `Renamr-${{ needs.version.outputs.version }}-linux-arm64.tar.gz` |
+
+            No installer and no .NET runtime needed: extract and run `Renamr.exe` (Windows) or `Renamr/Renamr` (Linux).
+            See the [README](https://github.com/${{ github.repository }}#download-and-install) for details.
+          files: dist/*
