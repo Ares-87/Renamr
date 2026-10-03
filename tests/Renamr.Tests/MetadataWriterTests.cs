@@ -160,5 +160,46 @@ public class MetadataWriterTests : IDisposable
         Assert.Contains("4 GB", warning.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Only_chosen_fields_are_written()
+    {
+        var path = _lib.Fixture("sample.mp3", "a.mp3");
+        var fields = new EmbeddedMetadataFields { MusicInfo = false, ReleaseDate = false };
+
+        Assert.Empty(_writer.Write(path, Song, fields).Warnings);
+
+        using var file = TagLib.File.Create(path);
+        Assert.Equal("Time", file.Tag.Title);
+        Assert.NotEqual("Pink Floyd", file.Tag.FirstPerformer);
+        Assert.NotEqual(1973u, file.Tag.Year);
+        var id3 = (TagLib.Id3v2.Tag)file.GetTag(TagLib.TagTypes.Id3v2);
+        Assert.Null(TagLib.Id3v2.TextInformationFrame.Get(id3, "TDRL", false));
+    }
+
+    [Fact]
+    public void Header_date_is_left_alone_when_release_date_is_off()
+    {
+        var path = _lib.Fixture("sample.mkv", "a.mkv");
+        var before = ReadMatroskaDate(path);
+
+        _writer.Write(path, Film, new EmbeddedMetadataFields { ReleaseDate = false });
+
+        Assert.Equal(before, ReadMatroskaDate(path));
+        using var file = TagLib.File.Create(path);
+        Assert.Equal("The Matrix", file.Tag.Title);
+    }
+
+    [Fact]
+    public void Nothing_is_touched_when_no_field_is_chosen()
+    {
+        var path = _lib.Fixture("sample.mp3", "a.mp3");
+        var bytes = File.ReadAllBytes(path);
+        var none = new EmbeddedMetadataFields { Title = false, SeriesInfo = false, ReleaseDate = false, Description = false, Genres = false, MusicInfo = false };
+
+        Assert.True(_writer.Write(path, Song, none).Succeeded);
+
+        Assert.Equal(bytes, File.ReadAllBytes(path));
+    }
+
     public void Dispose() => _lib.Dispose();
 }

@@ -161,6 +161,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial bool WriteEmbeddedMetadata { get; set; } = true;
 
+    /// <summary>La data di creazione è tra le date da cambiare (Impostazioni ➔ Metadati da scrivere).</summary>
+    public bool SetsCreationDate => Settings.Current.Output.FileDates.Creation;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunCommand))]
     [NotifyPropertyChangedFor(nameof(ActionableCount))]
@@ -308,7 +311,15 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task RunAsync(CancellationToken ct)
     {
         var root = RootFolder!;
-        var options = new RenameRunOptions { DryRun = IsDryRun, IncludeLowConfidence = IncludeLowConfidence, WriteEmbeddedMetadata = WriteEmbeddedMetadata };
+        var output = Settings.Current.Output;
+        var options = new RenameRunOptions
+        {
+            DryRun = IsDryRun,
+            IncludeLowConfidence = IncludeLowConfidence,
+            WriteEmbeddedMetadata = WriteEmbeddedMetadata,
+            EmbeddedFields = output.EmbeddedFields,
+            FileDates = output.FileDates,
+        };
         var plan = _plan;
 
         _messenger.Send(new RunStartedMessage(IsDryRun ? "Simulazione" : "Ridenominazione"));
@@ -437,7 +448,7 @@ public sealed partial class MainViewModel : ObservableObject
             Templates = current.Templates,
             Matching = current.Matching,
             Keys = current.Keys,
-            Output = new OutputSettings { WriteEmbeddedMetadata = value },
+            Output = current.Output.WithWriteEmbeddedMetadata(value),
             VideoExtensions = current.VideoExtensions,
             AudioExtensions = current.AudioExtensions,
             CompanionExtensions = current.CompanionExtensions,
@@ -571,6 +582,7 @@ public sealed partial class MainViewModel : ObservableObject
             _syncingFromSettings = false;
         }
         OnPropertyChanged(nameof(CurrentLanguage));
+        OnPropertyChanged(nameof(SetsCreationDate));
 
         var english = current.Matching.Language.StartsWith("en", StringComparison.OrdinalIgnoreCase);
         LanguageHint = english || !string.IsNullOrWhiteSpace(current.Keys.TmdbApiKey)

@@ -36,8 +36,14 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
 
     public bool CanWrite(string path) => Supported.Contains(Path.GetExtension(path));
 
-    public OperationResult Write(string path, MediaMetadata metadata)
+    public OperationResult Write(string path, MediaMetadata metadata) => Write(path, metadata, EmbeddedMetadataFields.All);
+
+    public OperationResult Write(string path, MediaMetadata metadata, EmbeddedMetadataFields fields)
     {
+        if (!fields.Any)
+        {
+            return OperationResult.Ok();
+        }
         if (!CanWrite(path))
         {
             return OperationResult.Ok([RenamrError.From(RenamrErrorCode.MetadataFormatUnsupported, Path.GetExtension(path))]);
@@ -49,7 +55,7 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
 
         if (length <= CopyOnWriteMaxBytes && HasFreeSpaceFor(path, length))
         {
-            var result = WriteTagsCopyOnWrite(path, metadata);
+            var result = WriteTagsCopyOnWrite(path, metadata, fields);
             if (!result.Succeeded)
             {
                 return result;
@@ -60,7 +66,7 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
 
         // Data "di codifica" nell'intestazione del contenitore: è quella che Esplora File mostra come "Supporto creato".
         string? headerProblem = null;
-        if (metadata.ReleaseDate is { } date)
+        if (fields.ReleaseDate && metadata.ReleaseDate is { } date)
         {
             var utc = date.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc);
             var ext = Path.GetExtension(path).ToLowerInvariant();
@@ -82,7 +88,7 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
         {
             // File grande (riscriverlo sarebbe lento e rischioso): se la data dell'intestazione è a posto
             // l'obiettivo è raggiunto e non serve disturbare l'utente con un avviso per ogni file.
-            if (headerProblem is not null || metadata.ReleaseDate is null)
+            if (headerProblem is not null || metadata.ReleaseDate is null || !fields.ReleaseDate)
             {
                 var s = Strings.Current;
                 var why = length > CopyOnWriteMaxBytes ? s.MetadataSkippedLarge : s.MetadataSkippedSpace;
@@ -97,7 +103,7 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
         return OperationResult.Ok(warnings);
     }
 
-    private OperationResult WriteTagsCopyOnWrite(string path, MediaMetadata metadata)
+    private OperationResult WriteTagsCopyOnWrite(string path, MediaMetadata metadata, EmbeddedMetadataFields fields)
     {
         var temp = Path.Combine(Path.GetDirectoryName(path)!, $".{Path.GetFileNameWithoutExtension(path)}.renamr-{Guid.NewGuid():N}{Path.GetExtension(path)}");
         try
@@ -108,14 +114,14 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
             bool dateWritten;
             using (var file = TagLib.File.Create(temp))
             {
-                dateWritten = ApplyTags(file, metadata);
+                dateWritten = ApplyTags(file, metadata, fields);
                 file.Save();
             }
 
             File.SetAttributes(temp, FileAttributes.Normal);
             ReplaceWith(temp, path);
 
-            return dateWritten || metadata.ReleaseDate is null
+            return dateWritten || metadata.ReleaseDate is null || !fields.ReleaseDate
                 ? OperationResult.Ok()
                 : OperationResult.Ok([RenamrError.From(RenamrErrorCode.MetadataFormatUnsupported, Strings.Current.MetadataYearOnly)]);
         }
@@ -169,9 +175,11 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
         TryDelete(backup);
     }
 
-    /// <summary>Applica i campi comuni e la data completa nel formato nativo di ogni contenitore.</summary>
-    internal static bool ApplyTags(TagLib.File file, MediaMetadata md)
+    /// <summary>Applica i campi scelti e la data completa nel formato nativo di ogni contenitore.</summary>
+    internal static bool ApplyTags(TagLib.File file, MediaMetadata md, EmbeddedMetadataFields? fields = null)
     {
+        fields ??= EmbeddedMetadataFields.All;
+
         // Per MP3 garantiamo un ID3v2.4 (TDRC con data completa non esiste in v2.3).
         if (file.MimeType.Contains("mp3", StringComparison.OrdinalIgnoreCase) || file is TagLib.Mpeg.AudioFile)
         {
@@ -179,7 +187,7 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
         }
 
         var tag = file.Tag;
-        if (md.Year is { } year)
+        if (fields.ReleaseDate && md.Year is { } year)
         {
             tag.Year = (uint)year;
         }
@@ -187,31 +195,41 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
         switch (md.Kind)
         {
             case MediaKind.Movie:
-                tag.Title = md.Title;
-                tag.Description = md.Overview;
+                if (fields.Title) tag.Title = md.Title;
+                if (fields.Description) tag.Description = md.Overview;
                 break;
             case MediaKind.Episode or MediaKind.Anime:
-                tag.Title = md.EpisodeTitle ?? md.Title;
-                tag.Album = md.Title;
-                if (md.Episode is { } ep) tag.Track = (uint)ep;
-                if (md.Season is { } s) tag.Disc = (uint)s;
-                tag.Description = md.Overview;
+                if (fields.Title) tag.Title = md.EpisodeTitle ?? md.Title;
+                if (fields.SeriesInfo)
+                {
+                    tag.Album = md.Title;
+                    if (md.Episode is { } ep) tag.Track = (uint)ep;
+                    if (md.Season is { } s) tag.Disc = (uint)s;
+                    if (file.GetTag(TagTypes.Apple) is TagLib.Mpeg4.AppleTag show)
+                    {
+                        show.SetText("tvsh", md.Title);
+                    }
+                }
+                if (fields.Description) tag.Description = md.Overview;
                 break;
             case MediaKind.Music:
-                tag.Title = md.Title;
-                if (md.Artist is not null) tag.Performers = [md.Artist];
-                if ((md.AlbumArtist ?? md.Artist) is { } aa) tag.AlbumArtists = [aa];
-                if (md.Album is not null) tag.Album = md.Album;
-                if (md.TrackNumber is { } t) tag.Track = (uint)t;
-                if (md.DiscNumber is { } d) tag.Disc = (uint)d;
+                if (fields.Title) tag.Title = md.Title;
+                if (fields.MusicInfo)
+                {
+                    if (md.Artist is not null) tag.Performers = [md.Artist];
+                    if ((md.AlbumArtist ?? md.Artist) is { } aa) tag.AlbumArtists = [aa];
+                    if (md.Album is not null) tag.Album = md.Album;
+                    if (md.TrackNumber is { } t) tag.Track = (uint)t;
+                    if (md.DiscNumber is { } d) tag.Disc = (uint)d;
+                }
                 break;
         }
-        if (md.Genres.Count > 0)
+        if (fields.Genres && md.Genres.Count > 0)
         {
             tag.Genres = [.. md.Genres];
         }
 
-        if (md.ReleaseDate is not { } date)
+        if (!fields.ReleaseDate || md.ReleaseDate is not { } date)
         {
             return false;
         }
@@ -235,10 +253,6 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
         if (file.GetTag(TagTypes.Apple) is TagLib.Mpeg4.AppleTag apple)
         {
             apple.SetText(AppleDayBox, iso + "T12:00:00Z");
-            if (md.Kind is MediaKind.Episode or MediaKind.Anime)
-            {
-                apple.SetText("tvsh", md.Title);
-            }
             written = true;
         }
         if (file.GetTag(TagTypes.Matroska) is TagLib.Matroska.Tag mkv)
