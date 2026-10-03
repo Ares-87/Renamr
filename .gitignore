@@ -5,3 +5,4 @@ obj/
 AppPackages/
 BundleArtifacts/
 src/Renamr.App/Tools/*.exe
+out/
