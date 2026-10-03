@@ -42,8 +42,9 @@ public sealed class PathBoundary
             throw new DirectoryNotFoundException($"Cartella non trovata: {full}");
         }
 
-        // La radice di un volume ("D:\") resta tale; le altre perdono il separatore finale e lo riacquistano.
-        Root = Path.TrimEndingDirectorySeparator(full) + Path.DirectorySeparatorChar;
+        // Sempre un solo separatore finale. Attenzione alla radice di un volume: TrimEndingDirectorySeparator
+        // lascia "I:\" com'è, quindi aggiungere il separatore produceva "I:\\" e nessun file risultava dentro la radice.
+        Root = Path.EndsInDirectorySeparator(full) ? full : full + Path.DirectorySeparatorChar;
     }
 
     /// <summary>True se <paramref name="candidate"/> è <b>strettamente</b> discendente della radice (la radice stessa no).</summary>
