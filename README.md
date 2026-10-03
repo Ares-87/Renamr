@@ -8,7 +8,7 @@ e allinea date del file system e metadati interni alla data di uscita reale.
 
 In Visual Studio: apri `Renamr.sln` e premi F5. Il progetto di avvio è già `Renamr.App` su piattaforma x64 (ARM64 disponibile).
 
-La versione compare nella barra del titolo ("Renamr v1.3.0", il commit nel tooltip) e sta in `Directory.Build.props`: ogni pull request la aumenta.
+La versione compare nella barra del titolo ("Renamr v1.4.0", il commit nel tooltip) e sta in `Directory.Build.props`: ogni pull request la aumenta.
 
 Da riga di comando:
 

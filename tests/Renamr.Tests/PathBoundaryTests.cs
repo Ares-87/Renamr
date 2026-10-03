@@ -14,6 +14,26 @@ public class PathBoundaryTests : IDisposable
     public void Root_is_normalized_with_trailing_separator() =>
         Assert.EndsWith(Path.DirectorySeparatorChar.ToString(), _boundary.Root);
 
+    /// <summary>
+    /// Radice di un disco ("I:\\" su Windows, "/" qui): prima diventava "I:\\\\" e nessun file risultava al suo interno.
+    /// </summary>
+    [Fact]
+    public void Volume_root_keeps_a_single_separator_and_contains_its_files()
+    {
+        var volumeRoot = Path.GetPathRoot(_lib.Root)!;
+        var boundary = new PathBoundary(volumeRoot);
+
+        Assert.Equal(volumeRoot, boundary.Root);
+        var file = Path.Combine(_lib.Root, "film.mkv");
+        Assert.True(boundary.IsStrictDescendant(file));
+        Assert.True(boundary.Validate(file, out var normalized).Succeeded);
+        Assert.Equal(file, normalized);
+    }
+
+    [Fact]
+    public void Trailing_separator_in_input_is_not_doubled() =>
+        Assert.Equal(_boundary.Root, new PathBoundary(_boundary.Root).Root);
+
     [Fact]
     public void Child_paths_are_accepted() =>
         Assert.True(_boundary.IsStrictDescendant(Path.Combine(_lib.Root, "Film", "a.mkv")));

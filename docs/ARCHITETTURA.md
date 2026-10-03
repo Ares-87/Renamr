@@ -142,7 +142,7 @@ La lingua si sceglie in Impostazioni ("it-IT"), dal selettore in basso o dal men
 ## 9. Scelte rapide e versione
 
 - **Tasto destro sulla lista**: formato del nome (preset in `TemplatePresets`, con anteprima sulla riga nel tooltip), lingua dei titoli, copia del nuovo nome, Esplora File. Un formato scelto diventa il template del tipo e i nomi si ricalcolano in locale (`RenamePlanner.Rerender`), senza nuove ricerche online.
-- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.3.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
+- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.4.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
 
 ## 10. Estendere
 
