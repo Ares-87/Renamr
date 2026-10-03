@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Renamr.Core.Localization;
 using Renamr.Presentation.Messages;
 using Renamr.Presentation.Services;
 
@@ -40,11 +41,14 @@ public sealed partial class IssuesViewModel : ObservableRecipient,
 
     public string Header => (ErrorCount, WarningCount) switch
     {
-        (0, 0) => "Nessun problema",
-        (var e, 0) => $"{e} errori",
-        (0, var w) => $"{w} avvisi",
-        var (e, w) => $"{e} errori · {w} avvisi",
+        (0, 0) => Strings.Current.IssuesNone,
+        (var e, 0) => Strings.Current.Format(nameof(Strings.IssuesErrors), e),
+        (0, var w) => Strings.Current.Format(nameof(Strings.IssuesWarnings), w),
+        var (e, w) => Strings.Current.Format(nameof(Strings.IssuesBoth), e, w),
     };
+
+    /// <summary>Lingua dell'interfaccia cambiata.</summary>
+    public void RefreshTexts() => OnPropertyChanged(nameof(Header));
 
     public void Receive(FileIssueMessage message)
     {

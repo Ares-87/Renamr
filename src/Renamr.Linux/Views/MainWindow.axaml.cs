@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using FluentAvalonia.UI.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using Renamr.Core.Localization;
 using Renamr.Core.Models;
 using Renamr.Core.Templating;
 using Renamr.Presentation.Services;
@@ -20,13 +21,7 @@ namespace Renamr.Linux.Views;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    private static readonly Dictionary<MediaKind, string> KindNames = new()
-    {
-        [MediaKind.Movie] = "film",
-        [MediaKind.Episode] = "serie TV",
-        [MediaKind.Anime] = "anime",
-        [MediaKind.Music] = "musica",
-    };
+    private static readonly MediaKind[] Kinds = [MediaKind.Movie, MediaKind.Episode, MediaKind.Anime, MediaKind.Music];
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -40,6 +35,36 @@ public sealed partial class MainWindow : Window
         FileList.ContextRequested += List_ContextRequested;
         IssueList.Tapped += Issue_Tapped;
         viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        UpdateDateHint();
+
+        // Modalità: prima si mostra quella del ViewModel, poi si ascoltano i clic. Un TabStrip appena creato seleziona
+        // da solo la prima voce, e con un binding questo rimetteva "Film, Serie e Musica" ricreando la finestra.
+        Loaded += (_, _) =>
+        {
+            ModeTabs.SelectedIndex = ViewModel.ModeIndex;
+            ModeTabs.SelectionChanged += ModeTabs_SelectionChanged;
+        };
+    }
+
+    private void ModeTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (ModeTabs.SelectedIndex >= 0)
+        {
+            ViewModel.ModeIndex = ModeTabs.SelectedIndex;
+        }
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        // Chiudendo, il TabStrip può cambiare selezione: non deve arrivare al ViewModel (che resta alla finestra nuova).
+        ModeTabs.SelectionChanged -= ModeTabs_SelectionChanged;
+        base.OnClosing(e);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        base.OnClosed(e);
     }
 
     public MainViewModel ViewModel { get; }
@@ -78,17 +103,21 @@ public sealed partial class MainWindow : Window
     private void SetDropHighlight(bool active)
     {
         DropZoneOutline.Classes.Set("active", active);
-        DropZoneTitle.Text = active ? "Rilascia per analizzare" : ViewModel.DropZoneTitle;
+        DropZoneTitle.Text = active ? Strings.Current.DropRelease : ViewModel.DropZoneTitle;
     }
 
     // ---- Date: su Linux la data di creazione si cambia solo su alcuni dischi ---------------------------------
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(MainViewModel.RootFolder) or nameof(MainViewModel.IsBatchMode)))
+        if (e.PropertyName is nameof(MainViewModel.RootFolder) or nameof(MainViewModel.IsBatchMode))
         {
-            return;
+            UpdateDateHint();
         }
+    }
+
+    private void UpdateDateHint()
+    {
         // In modalità "Rinomina file" le date non si toccano: l'avviso non serve.
         var root = ViewModel.RootFolder;
         if (root is null || ViewModel.IsBatchMode || FileCreationTime.CanSet(root))
@@ -96,10 +125,7 @@ public sealed partial class MainWindow : Window
             DateHintBar.IsOpen = false;
             return;
         }
-        DateHintBar.Message =
-            "Su questo disco Linux non permette di cambiare la data di creazione dei file: Renamr imposta la data di modifica " +
-            "alla data di uscita e, se attivo, la scrive anche nei metadati interni. Sui dischi NTFS montati con ntfs-3g " +
-            "(i dischi esterni di Windows) e sulle cartelle di rete SMB la data di creazione viene cambiata.";
+        DateHintBar.Message = Strings.Current.CreationDateHint;
         DateHintBar.IsOpen = true;
     }
 
@@ -130,7 +156,9 @@ public sealed partial class MainWindow : Window
     private async Task OpenSettingsAsync()
     {
         var settings = App.Services.GetRequiredService<SettingsViewModel>();
+        settings.IsMediaMode = ViewModel.IsMediaMode; // in "Rinomina file" niente chiavi API né formati dei film
         var previousLanguage = ViewModel.CurrentLanguage;
+        var previousUiLanguage = Strings.Current.Language;
         var dialog = new SettingsDialog(settings);
         if (await dialog.ShowAsync(this) != FAContentDialogResult.Primary)
         {
@@ -140,6 +168,11 @@ public sealed partial class MainWindow : Window
         if (settings.SaveCommand.ExecutionTask is { } saving)
         {
             await saving;
+        }
+        if (Strings.Current.Language != previousUiLanguage)
+        {
+            // Nuova lingua dell'interfaccia: la finestra si ricrea con i testi nuovi (stato e cartella restano nel ViewModel).
+            App.ReplaceMainWindow(this);
         }
         await ViewModel.SettingsSavedCommand.ExecuteAsync(previousLanguage);
     }
@@ -172,13 +205,13 @@ public sealed partial class MainWindow : Window
             return menu;
         }
 
-        MediaKind[] kinds = item?.TemplateKind is { } kind ? [kind] : [.. KindNames.Keys];
+        MediaKind[] kinds = item?.TemplateKind is { } kind ? [kind] : Kinds;
         foreach (var k in kinds)
         {
             menu.Items.Add(FormatMenu(k, item));
         }
 
-        var languages = new FAMenuFlyoutSubItem { Text = "Lingua dei titoli", IconSource = new FASymbolIconSource { Symbol = FASymbol.Globe } };
+        var languages = new FAMenuFlyoutSubItem { Text = Strings.Current.TitleLanguage, IconSource = new FASymbolIconSource { Symbol = FASymbol.Globe } };
         foreach (var language in ViewModel.Languages)
         {
             languages.Items.Add(new FARadioMenuFlyoutItem
@@ -192,7 +225,7 @@ public sealed partial class MainWindow : Window
         }
         menu.Items.Add(languages);
 
-        var custom = new FAMenuFlyoutItem { Text = "Personalizza formati…", IconSource = new FASymbolIconSource { Symbol = FASymbol.Settings } };
+        var custom = new FAMenuFlyoutItem { Text = Strings.Current.MenuCustomizeFormats, IconSource = new FASymbolIconSource { Symbol = FASymbol.Settings } };
         custom.Click += Settings_Click;
         menu.Items.Add(custom);
         if (item is not null)
@@ -209,7 +242,7 @@ public sealed partial class MainWindow : Window
         {
             if (item.Entry.TargetPath is { } targetPath)
             {
-                var copy = new FAMenuFlyoutItem { Text = "Copia nuovo nome", IconSource = new FASymbolIconSource { Symbol = FASymbol.Copy } };
+                var copy = new FAMenuFlyoutItem { Text = Strings.Current.MenuCopyNewName, IconSource = new FASymbolIconSource { Symbol = FASymbol.Copy } };
                 copy.Click += async (_, _) =>
                 {
                     if (Clipboard is { } clipboard)
@@ -219,15 +252,23 @@ public sealed partial class MainWindow : Window
                 };
                 menu.Items.Add(copy);
             }
-            var reveal = new FAMenuFlyoutItem { Text = "Mostra nella cartella", IconSource = new FASymbolIconSource { Symbol = FASymbol.OpenFolder } };
+            var reveal = new FAMenuFlyoutItem { Text = Strings.Current.MenuRevealFolder, IconSource = new FASymbolIconSource { Symbol = FASymbol.OpenFolder } };
             reveal.Click += (_, _) => App.Services.GetRequiredService<IShellService>().RevealInExplorer(item.Entry.SourcePath);
             menu.Items.Add(reveal);
         }
     }
 
+    private static string KindName(MediaKind kind) => kind switch
+    {
+        MediaKind.Movie => Strings.Current.KindMovie,
+        MediaKind.Episode => Strings.Current.KindEpisode,
+        MediaKind.Anime => Strings.Current.KindAnime,
+        _ => Strings.Current.KindMusic,
+    };
+
     private FAMenuFlyoutSubItem FormatMenu(MediaKind kind, FileItemViewModel? item)
     {
-        var sub = new FAMenuFlyoutSubItem { Text = $"Formato nome ({KindNames[kind]})", IconSource = new FASymbolIconSource { Symbol = FASymbol.Rename } };
+        var sub = new FAMenuFlyoutSubItem { Text = Strings.Current.Format(nameof(Strings.MenuNameFormat), KindName(kind)), IconSource = new FASymbolIconSource { Symbol = FASymbol.Rename } };
         var current = ViewModel.TemplateFor(kind);
         foreach (var preset in TemplatePresets.For(kind))
         {

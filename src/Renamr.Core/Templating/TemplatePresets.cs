@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using Renamr.Core.Models;
 
 namespace Renamr.Core.Templating;
@@ -5,32 +6,41 @@ namespace Renamr.Core.Templating;
 /// <summary>Un formato pronto da scegliere al volo (menu contestuale della lista).</summary>
 public sealed record TemplatePreset(MediaKind Kind, string Label, string Pattern);
 
-/// <summary>Formati più comuni per ogni tipo: il primo di ogni gruppo è il predefinito.</summary>
+/// <summary>Formati più comuni per ogni tipo: il primo di ogni gruppo è il predefinito. Nomi nella lingua dell'interfaccia.</summary>
 public static class TemplatePresets
 {
-    public static IReadOnlyList<TemplatePreset> All { get; } =
-    [
-        new(MediaKind.Movie, "Titolo (Anno) [Risoluzione]", "{Title} ({Year}) [{Resolution}]"),
-        new(MediaKind.Movie, "Titolo (Anno)", "{Title} ({Year})"),
-        new(MediaKind.Movie, "Titolo originale (Anno)", "{Original Title} ({Year})"),
-        new(MediaKind.Movie, "Anno - Titolo", "{Year} - {Title}"),
-        new(MediaKind.Movie, "Cartella Titolo (Anno)", "{Title} ({Year})/{Title} ({Year})"),
+    public static IReadOnlyList<TemplatePreset> All
+    {
+        get
+        {
+            var s = Strings.Current;
+            var season = s.SeasonFolder;
+            return
+            [
+                new(MediaKind.Movie, s.PresetTitleYearResolution, "{Title} ({Year}) [{Resolution}]"),
+                new(MediaKind.Movie, s.PresetTitleYear, "{Title} ({Year})"),
+                new(MediaKind.Movie, s.PresetOriginalTitleYear, "{Original Title} ({Year})"),
+                new(MediaKind.Movie, s.PresetYearTitle, "{Year} - {Title}"),
+                new(MediaKind.Movie, s.PresetMovieFolder, "{Title} ({Year})/{Title} ({Year})"),
 
-        new(MediaKind.Episode, "Serie - S01E02 - Titolo episodio", "{Show Title} - S{Season:00}E{Episode:00} - {Episode Title}"),
-        new(MediaKind.Episode, "Serie - 1x02 - Titolo episodio", "{Show Title} - {Season}x{Episode:00} - {Episode Title}"),
-        new(MediaKind.Episode, "Serie - S01E02", "{Show Title} - S{Season:00}E{Episode:00}"),
-        new(MediaKind.Episode, "Titolo originale - S01E02 - Titolo episodio", "{Original Title} - S{Season:00}E{Episode:00} - {Episode Title}"),
-        new(MediaKind.Episode, "Cartelle Serie / Stagione 01", "{Show Title}/Stagione {Season:00}/{Show Title} - S{Season:00}E{Episode:00} - {Episode Title}"),
+                new(MediaKind.Episode, s.PresetShowSxxExxTitle, "{Show Title} - S{Season:00}E{Episode:00} - {Episode Title}"),
+                new(MediaKind.Episode, s.PresetShow1x02Title, "{Show Title} - {Season}x{Episode:00} - {Episode Title}"),
+                new(MediaKind.Episode, s.PresetShowSxxExx, "{Show Title} - S{Season:00}E{Episode:00}"),
+                new(MediaKind.Episode, s.PresetOriginalSxxExxTitle, "{Original Title} - S{Season:00}E{Episode:00} - {Episode Title}"),
+                new(MediaKind.Episode, s.Format(nameof(Strings.PresetShowSeasonFolders), season),
+                    $"{{Show Title}}/{season} {{Season:00}}/{{Show Title}} - S{{Season:00}}E{{Episode:00}} - {{Episode Title}}"),
 
-        new(MediaKind.Anime, "Serie - 001 - Titolo episodio", "{Show Title} - {Absolute:000} - {Episode Title}"),
-        new(MediaKind.Anime, "Serie - 001", "{Show Title} - {Absolute:000}"),
-        new(MediaKind.Anime, "Titolo originale - 001 - Titolo episodio", "{Original Title} - {Absolute:000} - {Episode Title}"),
+                new(MediaKind.Anime, s.PresetAnimeAbsoluteTitle, "{Show Title} - {Absolute:000} - {Episode Title}"),
+                new(MediaKind.Anime, s.PresetAnimeAbsolute, "{Show Title} - {Absolute:000}"),
+                new(MediaKind.Anime, s.PresetAnimeOriginalAbsoluteTitle, "{Original Title} - {Absolute:000} - {Episode Title}"),
 
-        new(MediaKind.Music, "Artista - Album - 01 - Titolo", "{Artist} - {Album} - {Track:00} - {Title}"),
-        new(MediaKind.Music, "Artista - Titolo", "{Artist} - {Title}"),
-        new(MediaKind.Music, "01 - Titolo", "{Track:00} - {Title}"),
-        new(MediaKind.Music, "Cartelle Artista / Album", "{Artist}/{Album}/{Track:00} - {Title}"),
-    ];
+                new(MediaKind.Music, s.PresetArtistAlbumTrackTitle, "{Artist} - {Album} - {Track:00} - {Title}"),
+                new(MediaKind.Music, s.PresetArtistTitle, "{Artist} - {Title}"),
+                new(MediaKind.Music, s.PresetTrackTitle, "{Track:00} - {Title}"),
+                new(MediaKind.Music, s.PresetArtistAlbumFolders, "{Artist}/{Album}/{Track:00} - {Title}"),
+            ];
+        }
+    }
 
     public static IEnumerable<TemplatePreset> For(MediaKind kind) => All.Where(p => p.Kind == kind);
 }

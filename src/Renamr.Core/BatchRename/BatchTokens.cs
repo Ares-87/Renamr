@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Renamr.Core.Localization;
 
 namespace Renamr.Core.BatchRename;
 
@@ -17,18 +18,28 @@ namespace Renamr.Core.BatchRename;
 /// </summary>
 public static partial class BatchTokens
 {
-    /// <summary>Elenco per l'aiuto nell'interfaccia.</summary>
-    public static IReadOnlyList<(string Token, string Description)> Help { get; } =
-    [
-        ("{nome}", "nome attuale"),
-        ("{originale}", "nome di partenza"),
-        ("{n}", "numero progressivo ({n:000} = 001)"),
-        ("{cartella}", "cartella del file"),
-        ("{data}", "data di modifica ({data:dd-MM-yyyy})"),
-        ("{ora}", "ora di modifica"),
-        ("{creazione}", "data di creazione"),
-        ("{estensione}", "estensione originale"),
-    ];
+    /// <summary>
+    /// Elenco per l'aiuto nell'interfaccia, con i nomi dei segnaposto nella lingua in uso
+    /// (in italiano {nome}, {cartella}…; nelle altre lingue i sinonimi inglesi {name}, {folder}…, accettati sempre).
+    /// </summary>
+    public static IReadOnlyList<(string Token, string Description)> Help
+    {
+        get
+        {
+            var s = Strings.Current;
+            return
+            [
+                ($"{{{s.TokenName}}}", s.TokenNameHelp),
+                ($"{{{s.TokenOriginal}}}", s.TokenOriginalHelp),
+                ("{n}", s.TokenNumberHelp),
+                ($"{{{s.TokenFolder}}}", s.TokenFolderHelp),
+                ($"{{{s.TokenDate}}}", s.TokenDateHelp),
+                ($"{{{s.TokenTime}}}", s.TokenTimeHelp),
+                ($"{{{s.TokenCreated}}}", s.TokenCreatedHelp),
+                ($"{{{s.TokenExtension}}}", s.TokenExtensionHelp),
+            ];
+        }
+    }
 
     [GeneratedRegex(@"\{(?<name>[A-Za-zàèéìòù]+)(?::(?<fmt>[^}]+))?\}", RegexOptions.CultureInvariant)]
     private static partial Regex Token();
@@ -67,7 +78,7 @@ public static partial class BatchTokens
         }
         catch (FormatException)
         {
-            throw new BatchRuleException($"Formato data non valido: {format}");
+            throw new BatchRuleException(Strings.Current.Format(nameof(Strings.DateFormatInvalid), format));
         }
     }
 }

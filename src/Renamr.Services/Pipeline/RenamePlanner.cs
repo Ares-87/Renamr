@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Renamr.Core.Abstractions;
@@ -29,7 +30,7 @@ public sealed class RenamePlanner(
         var files = scanner.Scan(boundary);
         var entries = new RenamePlanEntry[files.Count];
         var done = 0;
-        progress?.Report(new RenameProgress(0, files.Count, null, "Analisi"));
+        progress?.Report(new RenameProgress(0, files.Count, null, Strings.Current.PhaseAnalysis));
 
         await Parallel.ForEachAsync(
             Enumerable.Range(0, files.Count),
@@ -37,7 +38,7 @@ public sealed class RenamePlanner(
             async (i, token) =>
             {
                 entries[i] = await PlanOneAsync(boundary, files[i], token).ConfigureAwait(false);
-                progress?.Report(new RenameProgress(Interlocked.Increment(ref done), files.Count, entries[i], "Analisi"));
+                progress?.Report(new RenameProgress(Interlocked.Increment(ref done), files.Count, entries[i], Strings.Current.PhaseAnalysis));
             }).ConfigureAwait(false);
 
         return DetectConflicts(entries);
@@ -154,7 +155,7 @@ public sealed class RenamePlanner(
             var sameFile = string.Equals(e.SourcePath, e.TargetPath, StringComparison.OrdinalIgnoreCase);
             if (!claimed.Add(e.TargetPath!))
             {
-                result.Add(e with { Status = PlanStatus.Error, Error = RenamrError.From(RenamrErrorCode.TargetAlreadyExists, "Un altro file del piano ha lo stesso nome di destinazione") });
+                result.Add(e with { Status = PlanStatus.Error, Error = RenamrError.From(RenamrErrorCode.TargetAlreadyExists, Strings.Current.PlanDuplicateTarget) });
             }
             else if (!sameFile && File.Exists(e.TargetPath))
             {

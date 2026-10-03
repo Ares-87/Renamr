@@ -2,11 +2,15 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Renamr.Core.BatchRename;
+using Renamr.Core.Localization;
 
 namespace Renamr.Presentation.ViewModels;
 
-/// <summary>Una voce del menu "Aggiungi regola".</summary>
-public sealed record BatchRuleKind(string Key, string Label, Func<BatchRuleViewModel> Create);
+/// <summary>Una voce del menu "Aggiungi regola". <see cref="Label"/> è nella lingua dell'interfaccia.</summary>
+public sealed record BatchRuleKind(string Key, string LabelKey, Func<BatchRuleViewModel> Create)
+{
+    public string Label => Strings.Current[LabelKey];
+}
 
 /// <summary>
 /// Pannello delle regole della modalità "Rinomina file": quali file, in che ordine, e l'elenco di regole applicate
@@ -28,17 +32,21 @@ public sealed partial class BatchRenameViewModel : ObservableObject
 
     public static IReadOnlyList<BatchRuleKind> RuleKinds { get; } =
     [
-        new("numerazione", "Numerazione", () => new NumberingRuleViewModel()),
-        new("nuovoNome", "Nuovo nome da modello", () => new NewNameRuleViewModel { Pattern = "{nome}" }),
-        new("sostituisci", "Sostituisci testo", () => new ReplaceTextRuleViewModel()),
-        new("inserisci", "Aggiungi testo", () => new InsertTextRuleViewModel()),
-        new("rimuovi", "Rimuovi caratteri", () => new RemoveCharactersRuleViewModel()),
-        new("maiuscole", "Maiuscole e minuscole", () => new ChangeCaseRuleViewModel()),
-        new("pulisci", "Pulisci nome", () => new CleanupRuleViewModel()),
-        new("estensione", "Estensione", () => new ExtensionRuleViewModel()),
+        new("numerazione", nameof(Strings.RuleNumbering), () => new NumberingRuleViewModel()),
+        new("nuovoNome", nameof(Strings.RuleNewNameMenu), () => new NewNameRuleViewModel { Pattern = $"{{{Strings.Current.TokenName}}}" }),
+        new("sostituisci", nameof(Strings.RuleReplace), () => new ReplaceTextRuleViewModel()),
+        new("inserisci", nameof(Strings.RuleInsert), () => new InsertTextRuleViewModel()),
+        new("rimuovi", nameof(Strings.RuleRemoveChars), () => new RemoveCharactersRuleViewModel()),
+        new("maiuscole", nameof(Strings.RuleCase), () => new ChangeCaseRuleViewModel()),
+        new("pulisci", nameof(Strings.RuleCleanup), () => new CleanupRuleViewModel()),
+        new("estensione", nameof(Strings.RuleExtension), () => new ExtensionRuleViewModel()),
     ];
 
-    public static IReadOnlyList<string> SortOptions { get; } = ["Nome", "Data di modifica", "Data di creazione", "Dimensione", "Estensione"];
+    /// <summary>Nella lingua dell'interfaccia: la finestra le rilegge quando si ricrea dopo un cambio di lingua.</summary>
+    public static IReadOnlyList<string> SortOptions =>
+    [
+        Strings.Current.SortName, Strings.Current.SortModified, Strings.Current.SortCreated, Strings.Current.SortSize, Strings.Current.SortExtension,
+    ];
 
     [ObservableProperty]
     public partial int SortByIndex { get; set; }
@@ -54,6 +62,15 @@ public sealed partial class BatchRenameViewModel : ObservableObject
     public partial string Filter { get; set; } = string.Empty;
 
     public bool HasRules => Rules.Count > 0;
+
+    /// <summary>Lingua dell'interfaccia cambiata: titoli e descrizioni delle schede.</summary>
+    public void RefreshTexts()
+    {
+        foreach (var rule in Rules)
+        {
+            rule.RefreshTexts();
+        }
+    }
 
     public BatchRenameOptions ToOptions() => new()
     {

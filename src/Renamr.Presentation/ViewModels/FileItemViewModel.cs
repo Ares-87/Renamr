@@ -1,5 +1,6 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Renamr.Core.Localization;
 using Renamr.Core.Models;
 using Renamr.Core.Options;
 
@@ -48,16 +49,19 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     public string StatusText => Status switch
     {
-        PlanStatus.Pending => "In attesa",
-        PlanStatus.Ready => "Pronto",
-        PlanStatus.LowConfidence => "Bassa confidenza",
-        PlanStatus.Unchanged => "Già corretto",
-        PlanStatus.Error => "Errore",
-        PlanStatus.Done => Entry.Error is null ? "Fatto" : "Fatto con avvisi",
-        PlanStatus.Simulated => "Simulato",
-        PlanStatus.Skipped => "Saltato",
+        PlanStatus.Pending => Strings.Current.StatusPending,
+        PlanStatus.Ready => Strings.Current.StatusReady,
+        PlanStatus.LowConfidence => Strings.Current.StatusLowConfidence,
+        PlanStatus.Unchanged => Strings.Current.StatusUnchanged,
+        PlanStatus.Error => Strings.Current.StatusError,
+        PlanStatus.Done => Entry.Error is null ? Strings.Current.StatusDone : Strings.Current.StatusDoneWithWarnings,
+        PlanStatus.Simulated => Strings.Current.StatusSimulated,
+        PlanStatus.Skipped => Strings.Current.StatusSkipped,
         _ => Status.ToString(),
     };
+
+    /// <summary>Lingua dell'interfaccia cambiata.</summary>
+    public void RefreshTexts() => OnPropertyChanged(nameof(StatusText));
 
     public void Apply(RenamePlanEntry entry)
     {

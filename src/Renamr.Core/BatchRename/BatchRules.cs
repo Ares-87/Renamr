@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -164,7 +165,7 @@ public sealed record ReplaceTextRule : BatchRule
         }
         catch (ArgumentException ex)
         {
-            return "Espressione regolare non valida: " + ex.Message;
+            return Strings.Current.Format(nameof(Strings.RegexInvalid), ex.Message);
         }
     }
 }

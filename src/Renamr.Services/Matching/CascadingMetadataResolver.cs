@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Renamr.Core.Abstractions;
@@ -36,7 +37,7 @@ public sealed class CascadingMetadataResolver(
             cancellationToken.ThrowIfCancellationRequested();
             if (!provider.IsConfigured)
             {
-                trace.Add($"{provider.Name}: non configurato");
+                trace.Add(Strings.Current.Format(nameof(Strings.ProviderNotConfigured), provider.Name));
                 continue;
             }
 
