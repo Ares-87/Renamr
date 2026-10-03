@@ -259,6 +259,8 @@ public sealed partial class MainViewModel : ObservableObject
                 var planner = _services.GetRequiredService<RenamePlanner>();
                 plan = await Task.Run(() => planner.PlanAsync(RootFolder, progress, ct), ct);
             }
+            // Il planner chiude senza eccezioni quando si annulla: il piano parziale va scartato qui.
+            ct.ThrowIfCancellationRequested();
             _plan = plan;
 
             // Ricostruzione finale nell'ordine stabile del piano (il progresso arriva in ordine sparso).

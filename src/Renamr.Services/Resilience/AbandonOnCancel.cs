@@ -35,6 +35,14 @@ public static class AbandonOnCancel
         return waited;
     }
 
+    /// <summary>
+    /// Versione per le pipeline Polly. Va passata così com'è, senza lambda async attorno: se l'annullamento uscisse da
+    /// un metodo async nostro verso il codice di Polly, Visual Studio lo segnalerebbe come eccezione "non gestita
+    /// dall'utente" e fermerebbe il debug anche se Polly e il resto dell'app la gestiscono.
+    /// </summary>
+    public static ValueTask<T> RunValueAsync<T>(Func<CancellationToken, Task<T>> call, CancellationToken cancellationToken, TimeSpan? safetyTimeout = null) =>
+        new(RunAsync(call, cancellationToken, safetyTimeout));
+
     /// <summary>Una risposta arrivata dopo l'annullamento va liberata; un errore va solo osservato, non è più di nessuno.</summary>
     private static void Observe<T>(Task<T> abandoned)
     {
