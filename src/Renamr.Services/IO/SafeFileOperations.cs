@@ -134,13 +134,18 @@ public sealed class SafeFileOperations(ILogger<SafeFileOperations>? logger = nul
     /// "Deep Date Sync" a livello di file system: CreationTime e LastWriteTime = data di rilascio.
     /// L'orario è fissato a mezzogiorno UTC così il giorno resta lo stesso in qualunque fuso orario
     /// (mezzanotte UTC diventerebbe il giorno prima a New York in Esplora File).
+    /// La data di creazione si scrive solo dove il file system lo permette (vedi <see cref="FileCreationTime"/>):
+    /// su Linux con ext4/Btrfs/exFAT cambia solo la data di modifica, e non è un errore.
     /// </summary>
     public OperationResult SyncFileSystemDates(string path, DateOnly releaseDate)
     {
         var utc = ToStableUtc(releaseDate);
         try
         {
-            File.SetCreationTimeUtc(path, utc);
+            if (!FileCreationTime.TrySet(path, utc))
+            {
+                _log.LogDebug("Data di creazione non modificabile su questo file system: {Path}", path);
+            }
             File.SetLastWriteTimeUtc(path, utc);
             return OperationResult.Ok();
         }
@@ -156,7 +161,7 @@ public sealed class SafeFileOperations(ILogger<SafeFileOperations>? logger = nul
     {
         try
         {
-            File.SetCreationTimeUtc(path, creationUtc);
+            FileCreationTime.TrySet(path, creationUtc);
             File.SetLastWriteTimeUtc(path, lastWriteUtc);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

@@ -19,6 +19,7 @@ Applicazione desktop Windows per riconoscere, rinominare e "datare" correttament
 
 ```
 Renamr.App            (WinUI 3: Views, XAML, servizi di piattaforma: picker, DPAPI, Esplora File)
+Renamr.Linux          (Avalonia + FluentAvalonia: stesse Views per Linux, chiave AES-GCM, file manager XDG)
    │
    ▼
 Renamr.Presentation   (ViewModel, Messenger, interfacce UI. Nessun riferimento a WinUI: testabile)
@@ -83,7 +84,7 @@ tests/Renamr.Tests/          # 77 test xUnit + file multimediali minuscoli gener
    4. tag interni con TagLib **su copia temporanea + `File.Replace`**, così l'originale non può restare a metà;
    5. `File.Move(overwrite: false)` atomico, registrato subito nel journal (fsync);
    6. sottotitoli/NFO con lo stesso nome seguono il file;
-   7. `SetCreationTimeUtc` / `SetLastWriteTimeUtc` **per ultimi**, perché ogni scrittura precedente aggiornerebbe `LastWriteTime`.
+   7. data di creazione (`FileCreationTime`, dove il file system lo permette) e `SetLastWriteTimeUtc` **per ultimi**, perché ogni scrittura precedente aggiornerebbe `LastWriteTime`.
 
    Un errore resta confinato alla riga; la coda continua. La simulazione (Dry Run) esegue i passi 1–2 e il controllo conflitti, poi si ferma.
 4. **Annulla** — il journal JSONL in `%LOCALAPPDATA%\Renamr\journal` permette di ripristinare i nomi (anche dopo un crash).
@@ -100,14 +101,14 @@ tests/Renamr.Tests/          # 77 test xUnit + file multimediali minuscoli gener
 - **fpcalc invece di AcoustID.NET.** AcoustID.NET richiede un decoder audio in-process (NAudio/Bass) e non è più mantenuto; `fpcalc.exe` è il binario ufficiale Chromaprint, decodifica tutto via FFmpeg e gira in un processo separato con timeout. Il lookup AcoustID restituisce già gli ID MusicBrainz e le date di release.
 - **Release più antica.** Per la musica la data "reale" è quella della prima release ufficiale, non della ristampa, salvo che i tag indichino già l'album.
 - **Rate limit.** AniDB (1 richiesta ogni 2 s, dump titoli al massimo una volta al giorno, cache 24 h) e MusicBrainz (1/s) hanno un throttle globale: superarli porta al ban dell'IP.
-- **Chiavi API** cifrate con DPAPI legata all'utente Windows; il file `settings.json` non le contiene mai in chiaro.
+- **Chiavi API** cifrate con DPAPI legata all'utente Windows (su Linux AES-GCM con una chiave in `~/.local/share/Renamr/secret.key`, permessi 600); il file `settings.json` non le contiene mai in chiaro.
 
 ## 6. Cosa è stato verificato e cosa no
 
 - `Renamr.Core`, `Renamr.Services`, `Renamr.Presentation` e i test **compilano con .NET 10 senza warning** (analizzatori `latest-recommended`, warning trattati come errori).
 - **114 test xUnit verdi**: parser, template, similarità e cascata dei provider, boundary check (traversal, prefissi, symlink), lock, ReadOnly, move senza sovrascrittura, date, scrittura tag reale su MP3/FLAC/MP4/MKV, pipeline completa (rinomina + tag + date + sottotitoli, dry run, file bloccato che non ferma la coda, conflitti, cartelle da template, annulla), ViewModel su un "thread UI" simulato, impostazioni cifrate.
 - Le date scritte sono state controllate anche con **ffprobe**: `creation_time=1999-03-31T12:00:00Z` su MP4/M4A/MKV, `date=1999-03-31` su MP3.
-- I test girano su Linux: `SetCreationTimeUtc` lì non è verificabile (il test lo controlla solo su Windows) e i codici HRESULT Win32 sono coperti da test sul classificatore.
+- I test girano su Linux. La data di creazione su NTFS montato con ntfs-3g è verificata su un volume NTFS vero (immagine creata con `mkntfs`, test con `RENAMR_NTFS_TEST_DIR`, controllo nella MFT con `ntfsinfo`); i codici HRESULT Win32 sono coperti da test sul classificatore.
 - **Non compilato qui: `Renamr.App` (WinUI 3)**. Il compilatore XAML di Windows App SDK gira solo su Windows. I file XAML sono XML valido e i ViewModel a cui si legano sono compilati e testati, ma la prima build su Windows può richiedere piccoli ritocchi.
 - **Provider online non chiamati dal vivo**: nessuna chiave API nel container. La logica di matching è testata con provider finti; gli endpoint seguono la documentazione pubblica di ciascun servizio.
 
@@ -142,10 +143,34 @@ La lingua si sceglie in Impostazioni ("it-IT"), dal selettore in basso o dal men
 ## 9. Scelte rapide e versione
 
 - **Tasto destro sulla lista**: formato del nome (preset in `TemplatePresets`, con anteprima sulla riga nel tooltip), lingua dei titoli, copia del nuovo nome, Esplora File. Un formato scelto diventa il template del tipo e i nomi si ricalcolano in locale (`RenamePlanner.Rerender`), senza nuove ricerche online.
-- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.4.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
+- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.5.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
 
 ## 10. Estendere
 
 - **Nuovo provider**: implementare `IMetadataProvider` (nome, priorità, tipi supportati, `SearchAsync` che lancia `ProviderException` sugli errori di servizio) e aggiungere una riga in `ServiceCollectionExtensions`.
 - **Nuovo segnaposto**: un caso in `NameTemplateEngine.Resolve`.
 - **Nuovo formato contenitore**: un ramo in `TagLibMetadataWriter.ApplyTags`.
+
+## 11. Versione Linux
+
+`src/Renamr.Linux` è la stessa app per Linux: Avalonia 12 con il tema e i controlli di **FluentAvalonia** (gli stessi pennelli, InfoBar, ProgressRing, ContentDialog e menu di WinUI), così la finestra ha la stessa struttura, gli stessi testi e lo stesso flusso di `Renamr.App`. ViewModel, servizi e pipeline sono quelli condivisi; il progetto contiene solo Views e servizi di piattaforma. Uno Platform è stato scartato perché avrebbe richiesto di riscrivere anche la parte Windows per ottenere lo stesso risultato.
+
+```bash
+# Requisiti: .NET 10 SDK. Per la musica: sudo apt install libchromaprint-tools (fornisce fpcalc)
+dotnet build Renamr.Linux.slnf
+dotnet run --project src/Renamr.Linux               # oppure: dotnet run --project src/Renamr.Linux -- /media/disco
+dotnet publish src/Renamr.Linux -c Release -r linux-x64 -o out/linux   # cartella autonoma, avvio con ./out/linux/Renamr
+```
+
+**Date su Linux.** Il kernel non ha una chiamata per cambiare la data di creazione: `utimensat` modifica solo accesso e modifica, e su Linux .NET ripiega `SetCreationTimeUtc` sulla data di modifica. `FileCreationTime` scrive quindi la data di creazione solo dove un driver la espone come attributo esteso:
+
+| File system | Data di creazione | Come |
+|---|---|---|
+| NTFS con **ntfs-3g** (dischi esterni di Windows) | sì, nella MFT, Windows la vede | `system.ntfs_crtime` (FILETIME) |
+| Cartelle di rete **SMB/CIFS** | sì, sul server | `user.cifs.creationtime`, solo su volumi CIFS/SMB2 (non verificato dal vivo) |
+| NTFS con il driver del kernel `ntfs3` | no, per quanto noto (non verificato dal vivo) | il driver espone solo gli attributi DOS: montare con ntfs-3g |
+| ext4, Btrfs, XFS, exFAT, FAT32 | no | resta la data reale |
+
+La data di modifica viene sempre impostata; i metadati interni (tag, `DateUTC` di MKV, `mvhd` di MP4) si scrivono come su Windows. Quando la cartella aperta sta su un disco che non permette di cambiare la data di creazione, l'anteprima lo dice con un avviso.
+
+**Altre differenze.** Il controllo dei file bloccati usa i lock di Linux, che i player in genere non prendono: su Linux rinominare un file aperto è comunque sicuro, perché il programma continua a leggere lo stesso file. "Mostra nella cartella" usa l'interfaccia D-Bus `org.freedesktop.FileManager1` (Nautilus, Dolphin, Nemo) con ripiego su `xdg-open`.
