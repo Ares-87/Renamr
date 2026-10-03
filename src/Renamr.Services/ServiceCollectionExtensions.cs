@@ -15,6 +15,7 @@ using Renamr.Services.Providers.Movies;
 using Renamr.Services.Providers.Music;
 using Renamr.Services.Providers.Tmdb;
 using Renamr.Services.Providers.Tv;
+using Renamr.Services.Resilience;
 
 namespace Renamr.Services;
 
@@ -89,6 +90,8 @@ public static class ServiceCollectionExtensions
                 client.DefaultRequestHeaders.UserAgent.Add(UserAgent);
                 client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("(+https://github.com/Ares-87/Renamr)"));
             })
+            // Prima della pipeline standard = handler più esterno: Annulla non chiude i socket a metà (vedi AbandonOnCancel).
+            .AddHttpMessageHandler(() => new AbandonOnCancelHandler((totalTimeout ?? TimeSpan.FromSeconds(45)) + TimeSpan.FromSeconds(15)))
             .AddStandardResilienceHandler(options =>
             {
                 options.Retry.MaxRetryAttempts = 3;
