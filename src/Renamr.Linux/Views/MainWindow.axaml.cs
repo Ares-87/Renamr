@@ -110,7 +110,7 @@ public sealed partial class MainWindow : Window
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.RootFolder) or nameof(MainViewModel.IsBatchMode))
+        if (e.PropertyName is nameof(MainViewModel.RootFolder) or nameof(MainViewModel.IsBatchMode) or nameof(MainViewModel.SetsCreationDate))
         {
             UpdateDateHint();
         }
@@ -118,9 +118,10 @@ public sealed partial class MainWindow : Window
 
     private void UpdateDateHint()
     {
-        // In modalità "Rinomina file" le date non si toccano: l'avviso non serve.
+        // In modalità "Rinomina file" le date non si toccano, e se la data di creazione è spenta nelle Impostazioni
+        // nemmeno: l'avviso non serve.
         var root = ViewModel.RootFolder;
-        if (root is null || ViewModel.IsBatchMode || FileCreationTime.CanSet(root))
+        if (root is null || ViewModel.IsBatchMode || !ViewModel.SetsCreationDate || FileCreationTime.CanSet(root))
         {
             DateHintBar.IsOpen = false;
             return;

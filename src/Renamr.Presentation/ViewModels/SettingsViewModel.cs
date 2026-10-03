@@ -16,8 +16,8 @@ public sealed record UiLanguageOption(string Code, string Label)
 }
 
 /// <summary>
-/// Finestra Impostazioni: template con anteprima dal vivo, chiavi API, soglia di confidenza, lingua dell'interfaccia.
-/// Le sezioni dei film (formati, chiavi, riconoscimento) si vedono solo in modalità "Film, Serie e Musica".
+/// Finestra Impostazioni: template con anteprima dal vivo, chiavi API, soglia di confidenza, metadati da scrivere, lingua dell'interfaccia.
+/// Le sezioni dei film (formati, chiavi, riconoscimento, metadati) si vedono solo in modalità "Film, Serie e Musica".
 /// </summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {
@@ -126,6 +126,32 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<string> Languages { get; } = [.. LanguageOption.All.Select(l => l.Tag)];
 
+    // ---- Metadati da scrivere: un campo per voce, ricordati per le volte dopo ----
+
+    [ObservableProperty]
+    public partial bool WriteTitle { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool WriteSeriesInfo { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool WriteReleaseDate { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool WriteDescription { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool WriteGenres { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool WriteMusicInfo { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool SetCreationDate { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool SetModifiedDate { get; set; } = true;
+
     public string MoviePreview => Preview(MovieTemplate, SampleMovie, SampleParsed, ".mkv");
     public string EpisodePreview => Preview(EpisodeTemplate, SampleEpisode, null, ".mkv");
     public string AnimePreview => Preview(AnimeTemplate, SampleAnime, null, ".mkv");
@@ -155,7 +181,20 @@ public sealed partial class SettingsViewModel : ObservableObject
                 AniDbClientName = Clean(AniDbClientName),
                 AniDbClientVersion = current.Keys.AniDbClientVersion,
             },
-            Output = current.Output,
+            Output = new OutputSettings
+            {
+                WriteEmbeddedMetadata = current.Output.WriteEmbeddedMetadata,
+                EmbeddedFields = new EmbeddedMetadataFields
+                {
+                    Title = WriteTitle,
+                    SeriesInfo = WriteSeriesInfo,
+                    ReleaseDate = WriteReleaseDate,
+                    Description = WriteDescription,
+                    Genres = WriteGenres,
+                    MusicInfo = WriteMusicInfo,
+                },
+                FileDates = new FileDateChoices { Creation = SetCreationDate, Modified = SetModifiedDate },
+            },
             VideoExtensions = current.VideoExtensions,
             AudioExtensions = current.AudioExtensions,
             CompanionExtensions = current.CompanionExtensions,
@@ -200,6 +239,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         AniDbClientName = s.Keys.AniDbClientName;
         HighConfidencePercent = Math.Round(s.Matching.HighConfidenceThreshold * 100);
         Language = s.Matching.Language;
+        var fields = s.Output.EmbeddedFields;
+        WriteTitle = fields.Title;
+        WriteSeriesInfo = fields.SeriesInfo;
+        WriteReleaseDate = fields.ReleaseDate;
+        WriteDescription = fields.Description;
+        WriteGenres = fields.Genres;
+        WriteMusicInfo = fields.MusicInfo;
+        SetCreationDate = s.Output.FileDates.Creation;
+        SetModifiedDate = s.Output.FileDates.Modified;
     }
 
     private string Preview(string pattern, MediaMetadata md, ParsedMediaName? parsed, string ext)

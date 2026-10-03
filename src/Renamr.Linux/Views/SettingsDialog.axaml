@@ -117,6 +117,22 @@
                 </StackPanel>
             </StackPanel>
 
+            <!-- Metadati da scrivere: un interruttore per campo, ricordato -->
+            <StackPanel Spacing="4" IsVisible="{Binding IsMediaMode}">
+                <TextBlock Text="{l:Tr SettingsMetadata}" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+                <TextBlock Classes="hint" Text="{l:Tr SettingsMetadataHint}" Margin="0,0,0,6" />
+                <TextBlock Classes="hint" Text="{l:Tr SettingsMetadataTags}" />
+                <CheckBox Content="{l:Tr MetaTitle}" IsChecked="{Binding WriteTitle}" />
+                <CheckBox Content="{l:Tr MetaSeries}" IsChecked="{Binding WriteSeriesInfo}" />
+                <CheckBox Content="{l:Tr MetaReleaseDate}" IsChecked="{Binding WriteReleaseDate}" />
+                <CheckBox Content="{l:Tr MetaDescription}" IsChecked="{Binding WriteDescription}" />
+                <CheckBox Content="{l:Tr MetaGenres}" IsChecked="{Binding WriteGenres}" />
+                <CheckBox Content="{l:Tr MetaMusic}" IsChecked="{Binding WriteMusicInfo}" />
+                <TextBlock Classes="hint" Text="{l:Tr SettingsFileDates}" Margin="0,8,0,0" />
+                <CheckBox Content="{l:Tr MetaCreationDate}" IsChecked="{Binding SetCreationDate}" />
+                <CheckBox Content="{l:Tr MetaModifiedDate}" IsChecked="{Binding SetModifiedDate}" />
+            </StackPanel>
+
             <!-- Interfaccia: sempre visibile, in tutte e due le modalità -->
             <StackPanel Spacing="10">
                 <TextBlock Text="{l:Tr SettingsInterface}" Theme="{StaticResource BodyStrongTextBlockStyle}" />

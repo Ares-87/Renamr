@@ -80,9 +80,9 @@ public sealed class MediaFileProcessor(
         try
         {
             // 4) Metadati interni (copy-on-write).
-            if (options.WriteEmbeddedMetadata && metadataWriter.CanWrite(source))
+            if (options.WriteEmbeddedMetadata && options.EmbeddedFields.Any && metadataWriter.CanWrite(source))
             {
-                var written = metadataWriter.Write(source, entry.Metadata);
+                var written = metadataWriter.Write(source, entry.Metadata, options.EmbeddedFields);
                 warnings.AddRange(written.Warnings);
                 if (written.Error is { } writeError)
                 {
@@ -106,9 +106,9 @@ public sealed class MediaFileProcessor(
             }
 
             // 7) Deep Date Sync sul file system, per ultimo.
-            if (options.SyncFileSystemDates && entry.Metadata.ReleaseDate is { } date)
+            if (options.SyncFileSystemDates && options.FileDates.Any && entry.Metadata.ReleaseDate is { } date)
             {
-                var synced = io.SyncFileSystemDates(current, date);
+                var synced = io.SyncFileSystemDates(current, date, options.FileDates);
                 if (!synced.Succeeded)
                 {
                     warnings.Add(synced.Error!);

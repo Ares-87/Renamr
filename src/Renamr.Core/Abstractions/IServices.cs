@@ -23,7 +23,10 @@ public interface INameTemplateEngine
 public interface IEmbeddedMetadataWriter
 {
     bool CanWrite(string path);
-    OperationResult Write(string path, MediaMetadata metadata);
+    OperationResult Write(string path, MediaMetadata metadata) => Write(path, metadata, EmbeddedMetadataFields.All);
+
+    /// <summary>Scrive solo i campi scelti; quelli spenti restano come sono nel file.</summary>
+    OperationResult Write(string path, MediaMetadata metadata, EmbeddedMetadataFields fields);
 }
 
 /// <summary>Lettura dei tag già presenti (indizi per la musica).</summary>
