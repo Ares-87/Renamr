@@ -71,10 +71,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>
     /// Modalità "Rinomina file": qualunque file, nomi decisi dalle regole, nessun metadato e nessuna data toccata.
-    /// Spenta = "Film e serie". Cambiarla con una cartella aperta rifà l'analisi nell'altra modalità.
+    /// Spenta = "Film e serie". Passando a "Rinomina file" la cartella aperta si rilegge subito (è solo locale);
+    /// tornando a "Film e serie" le ricerche online partono solo quando lo decide l'utente.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMediaMode), nameof(ModeIndex), nameof(DropZoneTitle), nameof(DropZoneHint))]
+    [NotifyPropertyChangedFor(nameof(IsMediaMode), nameof(ModeIndex), nameof(DropZoneTitle), nameof(DropZoneHint), nameof(CanAnalyzeLastFolder))]
     public partial bool IsBatchMode { get; set; }
 
     public bool IsMediaMode => !IsBatchMode;
@@ -124,11 +125,12 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<FileItemViewModel> Items { get; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsSelectPhase), nameof(IsPreviewVisible), nameof(IsBusy), nameof(PrimaryActionText))]
+    [NotifyPropertyChangedFor(nameof(IsSelectPhase), nameof(IsPreviewVisible), nameof(IsBusy), nameof(PrimaryActionText), nameof(CanAnalyzeLastFolder))]
     [NotifyCanExecuteChangedFor(nameof(RunCommand))]
     public partial AppPhase Phase { get; private set; } = AppPhase.SelectFolder;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanAnalyzeLastFolder), nameof(AnalyzeLastFolderText))]
     public partial string? RootFolder { get; private set; }
 
     [ObservableProperty]
@@ -195,6 +197,16 @@ public sealed partial class MainViewModel : ObservableObject
     public partial bool LastRunWasDryRun { get; private set; }
 
     public bool IsSelectPhase => Phase == AppPhase.SelectFolder;
+
+    /// <summary>
+    /// Nella schermata iniziale, dopo un'analisi annullata o un cambio di modalità, l'ultima cartella resta a portata
+    /// di un clic: l'analisi online riparte solo da qui, mai da sola.
+    /// </summary>
+    public bool CanAnalyzeLastFolder => IsSelectPhase && IsMediaMode && RootFolder is not null;
+
+    public string AnalyzeLastFolderText => RootFolder is null
+        ? string.Empty
+        : S.Format(nameof(Strings.AnalyzeFolder), Path.GetFileName(Path.TrimEndingDirectorySeparator(RootFolder)) is { Length: > 0 } name ? name : RootFolder);
     public bool IsPreviewVisible => Phase is AppPhase.Preview or AppPhase.Running or AppPhase.Completed or AppPhase.Analyzing;
     public bool IsBusy => Phase is AppPhase.Analyzing or AppPhase.Running;
     public int ActionableCount => ReadyCount + (IncludeLowConfidence ? LowConfidenceCount : 0);
@@ -396,6 +408,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Dopo una simulazione si può tornare all'anteprima e lanciare quella vera.</summary>
     [RelayCommand]
     private Task ReanalyzeAsync() => OpenFolderCommand.ExecuteAsync(RootFolder);
+
+    [RelayCommand]
+    private Task AnalyzeLastFolderAsync() => OpenFolderCommand.ExecuteAsync(RootFolder);
 
     // ---- Lingua e formato al volo ---------------------------------------------------------------
 
@@ -599,6 +614,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(DropZoneTitle));
         OnPropertyChanged(nameof(DropZoneHint));
+        OnPropertyChanged(nameof(AnalyzeLastFolderText));
         OnPropertyChanged(nameof(PrimaryActionText));
         SyncFromSettings();
         DescribeSummary();
@@ -611,9 +627,10 @@ public sealed partial class MainViewModel : ObservableObject
         Issues.RefreshTexts();
     }
 
+    /// <summary>Rifà le ricerche solo se c'è un'analisi a schermo: nella schermata iniziale decide l'utente.</summary>
     private async Task ReanalyzeIfOpenAsync()
     {
-        if (RootFolder is not null && !IsBusy)
+        if (RootFolder is not null && !IsBusy && Phase != AppPhase.SelectFolder)
         {
             await OpenFolderCommand.ExecuteAsync(RootFolder);
         }
@@ -659,10 +676,27 @@ public sealed partial class MainViewModel : ObservableObject
         IsLanguageHintOpen = LanguageHint is not null && !value;
         IsProviderWarningOpen = false;
         SaveBatchState();
-        if (RootFolder is not null && !IsBusy)
+        if (RootFolder is null || IsBusy)
         {
-            OpenFolderCommand.Execute(RootFolder);
+            return;
         }
+        if (value)
+        {
+            OpenFolderCommand.Execute(RootFolder); // solo lettura locale della cartella: immediata
+            return;
+        }
+
+        // Verso "Film e serie": le ricerche online non partono da sole. L'anteprima delle regole non vale qui,
+        // quindi si torna alla schermata iniziale con il pulsante per analizzare l'ultima cartella.
+        Items.Clear();
+        _bySource.Clear();
+        _plan = [];
+        _batchFiles = [];
+        RecountStatuses();
+        IsSummaryOpen = false;
+        LastRunWasDryRun = false;
+        Phase = AppPhase.SelectFolder;
+        _messenger.Send(new RunStartedMessage("Reset"));
     }
 
     /// <summary>Le regole cambiano a ogni tasto: si aspetta una pausa breve e si ricalcola una volta sola.</summary>

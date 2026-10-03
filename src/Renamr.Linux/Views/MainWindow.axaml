@@ -137,6 +137,15 @@
                         <TextBlock Text="{l:Tr PickFolder}" />
                     </StackPanel>
                 </Button>
+                <!-- Dopo un'analisi annullata o un cambio di modalità: l'analisi online riparte solo da qui. -->
+                <Button HorizontalAlignment="Center"
+                        IsVisible="{Binding CanAnalyzeLastFolder}"
+                        Command="{Binding AnalyzeLastFolderCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ctl:FASymbolIcon Symbol="Find" FontSize="16" />
+                        <TextBlock Text="{Binding AnalyzeLastFolderText}" TextTrimming="CharacterEllipsis" MaxWidth="360" />
+                    </StackPanel>
+                </Button>
                 <StackPanel Margin="0,8,0,0" HorizontalAlignment="Center" Spacing="4" IsVisible="{Binding IsMediaMode}">
                     <TextBlock Text="{l:Tr TitleLanguage}" />
                     <ComboBox MinWidth="200"

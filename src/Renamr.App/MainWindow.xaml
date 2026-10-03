@@ -282,6 +282,15 @@
                         <TextBlock Text="{x:Bind loc:Strings.Current.PickFolder}" />
                     </StackPanel>
                 </Button>
+                <!-- Dopo un'analisi annullata o un cambio di modalità: l'analisi online riparte solo da qui. -->
+                <Button HorizontalAlignment="Center"
+                        Visibility="{x:Bind ViewModel.CanAnalyzeLastFolder, Mode=OneWay}"
+                        Command="{x:Bind ViewModel.AnalyzeLastFolderCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE721;" FontSize="16" />
+                        <TextBlock Text="{x:Bind ViewModel.AnalyzeLastFolderText, Mode=OneWay}" TextTrimming="CharacterEllipsis" MaxWidth="360" />
+                    </StackPanel>
+                </Button>
                 <ComboBox Margin="0,8,0,0"
                           HorizontalAlignment="Center"
                           MinWidth="200"
