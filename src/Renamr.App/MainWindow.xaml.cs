@@ -31,6 +31,8 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        // Icona nella barra delle applicazioni e in Alt+Tab (l'exe ha la stessa icona da ApplicationIcon).
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "renamr.ico"));
 
         // AppWindow lavora in pixel fisici: scaliamo la dimensione "logica" con i DPI del monitor.
         var scale = GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0;

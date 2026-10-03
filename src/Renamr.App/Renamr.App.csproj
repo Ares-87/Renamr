@@ -13,6 +13,8 @@
     <RootNamespace>Renamr.App</RootNamespace>
     <AssemblyName>Renamr</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Icona di Renamr.exe (Esplora File, barra delle applicazioni): sorgente vettoriale in assets/brand. -->
+    <ApplicationIcon>Assets\renamr.ico</ApplicationIcon>
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
@@ -44,5 +46,7 @@
   <ItemGroup>
     <!-- Chromaprint fpcalc.exe (https://acoustid.org/chromaprint) va copiato in Tools\ per il riconoscimento acustico. -->
     <None Include="Tools\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Logo (chiaro e scuro) e icona della finestra, letti da ms-appx:///Assets/ e da AppWindow.SetIcon. -->
+    <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

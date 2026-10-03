@@ -10,6 +10,22 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
+            <!-- Logo e scritta: navy sul tema chiaro, bianco sul tema scuro. Sorgenti vettoriali in assets/brand. -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <BitmapImage x:Key="RenamrLogo" UriSource="ms-appx:///Assets/logo-light.png" />
+                    <BitmapImage x:Key="RenamrWordmark" UriSource="ms-appx:///Assets/wordmark-light.png" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Default">
+                    <BitmapImage x:Key="RenamrLogo" UriSource="ms-appx:///Assets/logo-dark.png" />
+                    <BitmapImage x:Key="RenamrWordmark" UriSource="ms-appx:///Assets/wordmark-dark.png" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <BitmapImage x:Key="RenamrLogo" UriSource="ms-appx:///Assets/logo-dark.png" />
+                    <BitmapImage x:Key="RenamrWordmark" UriSource="ms-appx:///Assets/wordmark-dark.png" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
             <!-- Badge di stato a "pillola" -->
             <Style x:Key="StatusBadgeStyle" TargetType="Border">
                 <Setter Property="CornerRadius" Value="10" />
@@ -35,6 +51,14 @@
                 <Setter Property="Padding" Value="6" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
+            </Style>
+
+            <!-- Numero di versione accanto al logo -->
+            <Style x:Key="VersionPillStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Padding" Value="7,1,7,2" />
+                <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
 
             <Style x:Key="ColumnHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextBlockStyle}">

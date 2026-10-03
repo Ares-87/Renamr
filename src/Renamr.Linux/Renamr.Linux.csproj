@@ -24,6 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Logo (chiaro e scuro) e icona della finestra: sorgenti vettoriali in assets/brand. -->
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Renamr.Core\Renamr.Core.csproj" />
     <ProjectReference Include="..\Renamr.Services\Renamr.Services.csproj" />
     <ProjectReference Include="..\Renamr.Presentation\Renamr.Presentation.csproj" />

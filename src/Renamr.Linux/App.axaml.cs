@@ -3,6 +3,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,6 +59,8 @@ public sealed partial class App : Application
         var uiLanguage = _host.Services.GetRequiredService<InterfaceSettingsStore>().Load().Language;
         Strings.Current.SetLanguage(Strings.Resolve(uiLanguage, CultureInfo.CurrentUICulture));
 
+        AddBrandResources();
+
         // Ultima rete di sicurezza: un'eccezione non gestita finisce nel log invece di chiudere l'app a metà lavoro.
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {
@@ -76,6 +81,23 @@ public sealed partial class App : Application
             }
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>Logo e scritta in due varianti: navy sul tema chiaro, bianco sul tema scuro (DynamicResource li scambia da solo).</summary>
+    private void AddBrandResources()
+    {
+        static Bitmap Load(string file) => new(AssetLoader.Open(new Uri($"avares://Renamr/Assets/{file}")));
+
+        Resources.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary
+        {
+            ["RenamrLogo"] = Load("logo-light.png"),
+            ["RenamrWordmark"] = Load("wordmark-light.png"),
+        };
+        Resources.ThemeDictionaries[ThemeVariant.Dark] = new ResourceDictionary
+        {
+            ["RenamrLogo"] = Load("logo-dark.png"),
+            ["RenamrWordmark"] = Load("wordmark-dark.png"),
+        };
     }
 
     /// <summary>Dopo un cambio di lingua: stessa posizione e dimensione, stesso ViewModel, testi nuovi.</summary>
