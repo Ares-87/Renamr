@@ -20,8 +20,187 @@
           DragOver="Root_DragOver"
           DragLeave="Root_DragLeave"
           Drop="Root_Drop">
+        <Grid.Resources>
+            <!-- Intestazione comune delle schede regola: attiva/spenta, numero e nome, sposta e togli. -->
+            <DataTemplate x:Key="RuleHeader" x:DataType="vm:BatchRuleViewModel">
+                <StackPanel Spacing="2">
+                    <Grid ColumnSpacing="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <CheckBox IsChecked="{x:Bind Enabled, Mode=TwoWay}" MinWidth="0" Padding="0"
+                                  ToolTipService.ToolTip="Attiva o spegni questa regola" />
+                        <TextBlock Grid.Column="1" Text="{x:Bind Header, Mode=OneWay}" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="2" Style="{StaticResource RuleIconButtonStyle}" Command="{x:Bind MoveUpCommand}"
+                                ToolTipService.ToolTip="Sposta su">
+                            <FontIcon Glyph="&#xE70E;" FontSize="12" />
+                        </Button>
+                        <Button Grid.Column="3" Style="{StaticResource RuleIconButtonStyle}" Command="{x:Bind MoveDownCommand}"
+                                ToolTipService.ToolTip="Sposta giù">
+                            <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                        </Button>
+                        <Button Grid.Column="4" Style="{StaticResource RuleIconButtonStyle}" Command="{x:Bind RemoveCommand}"
+                                ToolTipService.ToolTip="Togli la regola">
+                            <FontIcon Glyph="&#xE711;" FontSize="12" />
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="{x:Bind Description}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </DataTemplate>
+
+            <DataTemplate x:Key="NumberingRuleTemplate" x:DataType="vm:NumberingRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:NumberingRuleViewModel.Positions}"
+                                  SelectedIndex="{x:Bind PositionIndex, Mode=TwoWay}" />
+                        <Grid ColumnSpacing="8" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <NumberBox Header="Da" Value="{x:Bind Start, Mode=TwoWay}" SpinButtonPlacementMode="Compact" />
+                            <NumberBox Grid.Column="1" Header="Passo" Value="{x:Bind Step, Mode=TwoWay}" SpinButtonPlacementMode="Compact" />
+                            <NumberBox Grid.Row="1" Header="Cifre" Value="{x:Bind Digits, Mode=TwoWay}" Minimum="0" Maximum="12"
+                                       SpinButtonPlacementMode="Compact"
+                                       ToolTipService.ToolTip="Zeri iniziali: 3 = 001. Con 0 bastano le cifre del numero più alto" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Header="Separatore"
+                                     Text="{x:Bind Separator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <CheckBox Content="Ricomincia in ogni cartella" IsChecked="{x:Bind RestartInEachFolder, Mode=TwoWay}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="NewNameRuleTemplate" x:DataType="vm:NewNameRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <TextBox Text="{x:Bind Pattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Vacanze {n:000}" />
+                        <TextBlock Text="{x:Bind vm:NewNameRuleViewModel.TokensHelp}" Style="{StaticResource CaptionTextBlockStyle}"
+                                   TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ReplaceTextRuleTemplate" x:DataType="vm:ReplaceTextRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <TextBox Text="{x:Bind Find, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Cerca" />
+                        <TextBox Text="{x:Bind Replacement, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Sostituisci con (vuoto = togli)" />
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <CheckBox Content="Maiuscole esatte" IsChecked="{x:Bind MatchCase, Mode=TwoWay}" />
+                            <CheckBox Content="Espressione regolare" IsChecked="{x:Bind UseRegex, Mode=TwoWay}" />
+                        </StackPanel>
+                        <TextBlock Text="{x:Bind Error, Mode=OneWay}" Visibility="{x:Bind HasError, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="InsertTextRuleTemplate" x:DataType="vm:InsertTextRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <TextBox Text="{x:Bind Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Testo (anche {data}, {cartella}…)" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox HorizontalAlignment="Stretch"
+                                      ItemsSource="{x:Bind vm:InsertTextRuleViewModel.Positions}"
+                                      SelectedIndex="{x:Bind PositionIndex, Mode=TwoWay}" />
+                            <NumberBox Grid.Column="1" Width="110" Value="{x:Bind Index, Mode=TwoWay}" Minimum="0"
+                                       SpinButtonPlacementMode="Compact" Visibility="{x:Bind IsAtIndex, Mode=OneWay}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="RemoveCharactersRuleTemplate" x:DataType="vm:RemoveCharactersRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:RemoveCharactersRuleViewModel.Modes}"
+                                  SelectedIndex="{x:Bind ModeIndex, Mode=TwoWay}" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <NumberBox Header="Quanti" Value="{x:Bind Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact" />
+                            <NumberBox Grid.Column="1" Header="Dalla posizione" Value="{x:Bind From, Mode=TwoWay}" Minimum="1"
+                                       SpinButtonPlacementMode="Compact" Visibility="{x:Bind IsRange, Mode=OneWay}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ChangeCaseRuleTemplate" x:DataType="vm:ChangeCaseRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:ChangeCaseRuleViewModel.Modes}"
+                                  SelectedIndex="{x:Bind ModeIndex, Mode=TwoWay}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="CleanupRuleTemplate" x:DataType="vm:CleanupRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="4">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <CheckBox Content="Punti e trattini bassi diventano spazi" IsChecked="{x:Bind SeparatorsToSpaces, Mode=TwoWay}" />
+                        <CheckBox Content="Togli il testo tra parentesi" IsChecked="{x:Bind RemoveBracketed, Mode=TwoWay}" />
+                        <CheckBox Content="Togli gli accenti" IsChecked="{x:Bind RemoveAccents, Mode=TwoWay}" />
+                        <CheckBox Content="Togli i numeri" IsChecked="{x:Bind RemoveDigits, Mode=TwoWay}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ExtensionRuleTemplate" x:DataType="vm:ExtensionRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:ExtensionRuleViewModel.Modes}"
+                                  SelectedIndex="{x:Bind ModeIndex, Mode=TwoWay}" />
+                        <TextBox Text="{x:Bind NewExtension, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="jpg"
+                                 Visibility="{x:Bind IsReplace, Mode=OneWay}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <ui:RuleTemplateSelector x:Key="RuleTemplates"
+                                     Numbering="{StaticResource NumberingRuleTemplate}"
+                                     NewName="{StaticResource NewNameRuleTemplate}"
+                                     ReplaceText="{StaticResource ReplaceTextRuleTemplate}"
+                                     InsertText="{StaticResource InsertTextRuleTemplate}"
+                                     RemoveCharacters="{StaticResource RemoveCharactersRuleTemplate}"
+                                     ChangeCase="{StaticResource ChangeCaseRuleTemplate}"
+                                     Cleanup="{StaticResource CleanupRuleTemplate}"
+                                     Extension="{StaticResource ExtensionRuleTemplate}" />
+        </Grid.Resources>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />    <!-- barra del titolo personalizzata -->
+            <RowDefinition Height="Auto" />  <!-- modalità: film e serie / rinomina file -->
             <RowDefinition Height="*" />     <!-- contenuto: drop-zone oppure diff view -->
             <RowDefinition Height="Auto" />  <!-- pannello errori/avvisi -->
             <RowDefinition Height="Auto" />  <!-- barra azione / progresso -->
@@ -48,10 +227,22 @@
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
         </Grid>
 
+        <!-- ═══ Modalità: film e serie (riconoscimento online) oppure qualunque file con regole ═══ -->
+        <SelectorBar x:Name="ModeBar"
+                     Grid.Row="1"
+                     Margin="16,0,24,0"
+                     IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
+                     SelectionChanged="ModeBar_SelectionChanged">
+            <SelectorBarItem x:Name="MediaModeItem" Text="Film e serie"
+                             ToolTipService.ToolTip="Riconosce film, serie TV, anime e musica nei database online, con metadati e date di uscita" />
+            <SelectorBarItem x:Name="BatchModeItem" Text="Rinomina file"
+                             ToolTipService.ToolTip="Qualunque file: numerazione, sostituzioni, maiuscole e altre regole. Cambia solo il nome" />
+        </SelectorBar>
+
         <!-- ═══ FASE 1 · Selezione & Drag-and-Drop ═══ -->
         <Grid x:Name="DropZone"
-              Grid.Row="1"
-              Margin="48,24,48,48"
+              Grid.Row="2"
+              Margin="48,16,48,48"
               Visibility="{x:Bind ViewModel.IsSelectPhase, Mode=OneWay}">
             <Rectangle x:Name="DropZoneOutline"
                        RadiusX="12" RadiusY="12"
@@ -62,10 +253,10 @@
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="440">
                 <FontIcon Glyph="&#xE8B7;" FontSize="56" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                 <TextBlock x:Name="DropZoneTitle"
-                           Text="Trascina qui la cartella della tua libreria"
+                           Text="{x:Bind ViewModel.DropZoneTitle, Mode=OneWay}"
                            Style="{StaticResource SubtitleTextBlockStyle}"
                            TextAlignment="Center" HorizontalAlignment="Center" />
-                <TextBlock Text="Film, serie TV, anime e musica vengono riconosciuti automaticamente. Nulla viene modificato finché non confermi."
+                <TextBlock Text="{x:Bind ViewModel.DropZoneHint, Mode=OneWay}"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextAlignment="Center" TextWrapping="Wrap" />
@@ -81,6 +272,7 @@
                 <ComboBox Margin="0,8,0,0"
                           HorizontalAlignment="Center"
                           MinWidth="200"
+                          Visibility="{x:Bind ViewModel.IsMediaMode, Mode=OneWay}"
                           Header="Lingua dei titoli"
                           ItemsSource="{x:Bind ViewModel.Languages}"
                           SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}"
@@ -88,11 +280,76 @@
             </StackPanel>
         </Grid>
 
-        <!-- ═══ FASE 2 · Anteprima intelligente (Diff View) ═══ -->
-        <Grid Grid.Row="1"
+        <!-- ═══ FASE 2 · Anteprima intelligente (Diff View), con le regole a sinistra in modalità "Rinomina file" ═══ -->
+        <Grid Grid.Row="2"
               Padding="24,8,24,0"
-              RowSpacing="12"
               Visibility="{x:Bind ViewModel.IsPreviewVisible, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Pannello regole: quali file, in che ordine, e le regole applicate una dopo l'altra -->
+            <ScrollViewer Width="340" Margin="0,0,16,0"
+                          Visibility="{x:Bind ViewModel.IsBatchMode, Mode=OneWay}"
+                          IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}">
+                <StackPanel Spacing="12" Margin="0,0,12,12">
+                    <TextBlock Text="File" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBox Text="{x:Bind ViewModel.Batch.Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             PlaceholderText="Tutti i file (es. *.jpg; *.png)"
+                             ToolTipService.ToolTip="Quali file rinominare: estensioni (jpg png) o modelli con * e ? (IMG_*). Vuoto = tutti" />
+                    <CheckBox Content="Includi le sottocartelle" IsChecked="{x:Bind ViewModel.Batch.IncludeSubfolders, Mode=TwoWay}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Ordine" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:BatchRenameViewModel.SortOptions}"
+                                  SelectedIndex="{x:Bind ViewModel.Batch.SortByIndex, Mode=TwoWay}"
+                                  ToolTipService.ToolTip="L'ordine in cui i file vengono numerati" />
+                        <CheckBox Grid.Column="2" Content="Inverso" MinWidth="0" IsChecked="{x:Bind ViewModel.Batch.Descending, Mode=TwoWay}" />
+                    </Grid>
+
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Regole" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Style="{StaticResource RuleIconButtonStyle}"
+                                Command="{x:Bind ViewModel.Batch.ClearRulesCommand}"
+                                Visibility="{x:Bind ViewModel.Batch.HasRules, Mode=OneWay}"
+                                ToolTipService.ToolTip="Togli tutte le regole">
+                            <FontIcon Glyph="&#xE74D;" FontSize="14" />
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="Nessuna regola: aggiungine una per vedere i nuovi nomi."
+                               Visibility="{x:Bind ui:Ui.Collapsed(ViewModel.Batch.HasRules), Mode=OneWay}"
+                               TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Batch.Rules}"
+                                  ItemTemplateSelector="{StaticResource RuleTemplates}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <Button x:Name="AddRuleButton" HorizontalAlignment="Stretch" Click="AddRule_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE710;" FontSize="14" />
+                            <TextBlock Text="Aggiungi regola" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
+
+        <Grid Grid.Column="1" RowSpacing="12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -108,7 +365,8 @@
                         <Run Text="Pronti" /> <Run Text="{x:Bind ViewModel.ReadyCount, Mode=OneWay}" />
                     </TextBlock>
                 </Border>
-                <Border Style="{StaticResource StatusBadgeStyle}" Background="{ThemeResource SystemFillColorCautionBackgroundBrush}">
+                <Border Style="{StaticResource StatusBadgeStyle}" Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                        Visibility="{x:Bind ViewModel.IsMediaMode, Mode=OneWay}">
                     <TextBlock Style="{StaticResource StatusBadgeTextStyle}" Foreground="{ThemeResource SystemFillColorCautionBrush}">
                         <Run Text="Bassa confidenza" /> <Run Text="{x:Bind ViewModel.LowConfidenceCount, Mode=OneWay}" />
                     </TextBlock>
@@ -222,9 +480,10 @@
                 </ListView.ItemTemplate>
             </ListView>
         </Grid>
+        </Grid>
 
         <!-- ═══ Pannello collassabile Errori/Avvisi ═══ -->
-        <Expander Grid.Row="2"
+        <Expander Grid.Row="3"
                   Margin="24,12,24,0"
                   HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Stretch"
@@ -262,7 +521,7 @@
         </Expander>
 
         <!-- ═══ FASE 3 · Azione unica + monitoraggio in tempo reale ═══ -->
-        <Grid Grid.Row="3"
+        <Grid Grid.Row="4"
               Margin="0,12,0,0"
               Padding="24,14"
               ColumnSpacing="16"
@@ -285,13 +544,16 @@
                 <ComboBox ItemsSource="{x:Bind ViewModel.Languages}"
                           SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}"
                           DisplayMemberPath="Label"
+                          Visibility="{x:Bind ViewModel.IsMediaMode, Mode=OneWay}"
                           MinWidth="130"
                           VerticalAlignment="Center"
                           ToolTipService.ToolTip="Lingua dei titoli: cambiandola le ricerche ripartono subito" />
                 <CheckBox Content="Scrivi metadati interni"
                           IsChecked="{x:Bind ViewModel.WriteEmbeddedMetadata, Mode=TwoWay}"
+                          Visibility="{x:Bind ViewModel.IsMediaMode, Mode=OneWay}"
                           ToolTipService.ToolTip="Scrive titolo, episodio e data anche dentro i file (tag MKV/MP4/MP3). Se è spento Renamr cambia solo il nome e le date del file." />
                 <CheckBox IsChecked="{x:Bind ViewModel.IncludeLowConfidence, Mode=TwoWay}"
+                          Visibility="{x:Bind ViewModel.IsMediaMode, Mode=OneWay}"
                           ToolTipService.ToolTip="Rinomina anche i file riconosciuti con poca sicurezza (righe gialle). Controllali prima nell'anteprima.">
                     <TextBlock>
                         <Run Text="Includi bassa confidenza" />

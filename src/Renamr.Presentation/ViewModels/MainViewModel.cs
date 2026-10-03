@@ -4,12 +4,14 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Renamr.Core.Abstractions;
+using Renamr.Core.BatchRename;
 using Renamr.Core.Errors;
 using Renamr.Core.Models;
 using Renamr.Core.Options;
 using Renamr.Core.Templating;
 using Renamr.Presentation.Messages;
 using Renamr.Presentation.Services;
+using Renamr.Services.BatchRename;
 using Renamr.Services.Matching;
 using Renamr.Services.Pipeline;
 
@@ -17,6 +19,8 @@ namespace Renamr.Presentation.ViewModels;
 
 /// <summary>
 /// ViewModel della finestra principale: governa il flusso Selezione ➔ Anteprima ➔ Azione.
+/// Due modalità con lo stesso flusso: "Film e serie" (riconoscimento online, metadati e date) e
+/// "Rinomina file" (qualunque file, regole dell'utente, solo il nome).
 /// Gli aggiornamenti arrivano via <see cref="IProgress{T}"/>: creato sul thread UI, riporta sul thread UI
 /// (DispatcherQueueSynchronizationContext in WinUI) senza Dispatcher espliciti nel ViewModel.
 /// </summary>
@@ -29,6 +33,9 @@ public sealed partial class MainViewModel : ObservableObject
     private string? _lastJournal;
     private IReadOnlyList<RenamePlanEntry> _plan = [];
     private bool _syncingFromSettings;
+    private IReadOnlyList<BatchFile> _batchFiles = [];
+    private int _batchRefreshVersion;
+    private bool _pendingRescan;
 
     public MainViewModel(IServiceProvider services, IFolderPickerService folderPicker, IMessenger messenger, IssuesViewModel issues)
     {
@@ -36,10 +43,48 @@ public sealed partial class MainViewModel : ObservableObject
         _folderPicker = folderPicker;
         _messenger = messenger;
         Issues = issues;
+
+        var batchState = services.GetRequiredService<BatchRenameStore>().Load();
+        Batch = new BatchRenameViewModel(batchState.Options);
+        Batch.RulesChanged += (_, _) => ScheduleBatchRefresh(rescan: false);
+        Batch.ScopeChanged += (_, _) => ScheduleBatchRefresh(rescan: true);
+        _syncingFromSettings = true;
+        IsBatchMode = batchState.BatchModeActive;
+        _syncingFromSettings = false;
+
         SyncFromSettings();
     }
 
     public IssuesViewModel Issues { get; }
+
+    /// <summary>Regole, filtro e ordine della modalità "Rinomina file".</summary>
+    public BatchRenameViewModel Batch { get; }
+
+    /// <summary>Attesa dopo l'ultimo tasto prima di ricalcolare l'anteprima delle regole.</summary>
+    public TimeSpan BatchPreviewDelay { get; set; } = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>
+    /// Modalità "Rinomina file": qualunque file, nomi decisi dalle regole, nessun metadato e nessuna data toccata.
+    /// Spenta = "Film e serie". Cambiarla con una cartella aperta rifà l'analisi nell'altra modalità.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMediaMode), nameof(ModeIndex), nameof(DropZoneTitle), nameof(DropZoneHint))]
+    public partial bool IsBatchMode { get; set; }
+
+    public bool IsMediaMode => !IsBatchMode;
+
+    /// <summary>Per il selettore in alto: 0 = Film e serie, 1 = Rinomina file.</summary>
+    public int ModeIndex
+    {
+        get => IsBatchMode ? 1 : 0;
+        set => IsBatchMode = value == 1;
+    }
+
+    public string DropZoneTitle => IsBatchMode ? "Trascina qui una cartella" : "Trascina qui la cartella della tua libreria";
+
+    public string DropZoneHint => IsBatchMode
+        ? "Qualunque tipo di file: foto, documenti, musica. Scegli le regole e guarda subito i nuovi nomi. Nulla viene modificato finché non confermi."
+        : "Film, serie TV, anime e musica vengono riconosciuti automaticamente. Nulla viene modificato finché non confermi.";
 
     /// <summary>"Renamr v1.1.0": accanto al nome, per capire al volo se si sta usando l'ultima revisione.</summary>
     public string AppTitle => AppInfo.Title;
@@ -189,8 +234,23 @@ public sealed partial class MainViewModel : ObservableObject
         IsProviderWarningOpen = false;
         try
         {
-            var planner = _services.GetRequiredService<RenamePlanner>();
-            var plan = await Task.Run(() => planner.PlanAsync(RootFolder, progress, ct), ct);
+            IReadOnlyList<RenamePlanEntry> plan;
+            if (IsBatchMode)
+            {
+                var root = RootFolder;
+                var options = Batch.ToOptions();
+                var batchPlanner = _services.GetRequiredService<BatchRenamePlanner>();
+                (_batchFiles, plan) = await Task.Run(() =>
+                {
+                    var files = batchPlanner.Scan(root, options);
+                    return (files, batchPlanner.Plan(root, files, options));
+                }, ct);
+            }
+            else
+            {
+                var planner = _services.GetRequiredService<RenamePlanner>();
+                plan = await Task.Run(() => planner.PlanAsync(RootFolder, progress, ct), ct);
+            }
             _plan = plan;
 
             // Ricostruzione finale nell'ordine stabile del piano (il progresso arriva in ordine sparso).
@@ -232,11 +292,20 @@ public sealed partial class MainViewModel : ObservableObject
         Phase = AppPhase.Running;
 
         var progress = new Progress<RenameProgress>(OnProgress);
-        var executor = _services.GetRequiredService<RenameExecutor>();
         IReadOnlyList<RenamePlanEntry> results;
         try
         {
-            results = await Task.Run(() => executor.ExecuteAsync(root, plan, options, progress, ct), CancellationToken.None);
+            if (IsBatchMode)
+            {
+                // Solo il nome: nessun metadato interno e nessuna data, qualunque cosa dicano le opzioni dei film.
+                var batch = _services.GetRequiredService<BatchRenameExecutor>();
+                results = await Task.Run(() => batch.ExecuteAsync(root, plan, options.DryRun, progress, ct), CancellationToken.None);
+            }
+            else
+            {
+                var executor = _services.GetRequiredService<RenameExecutor>();
+                results = await Task.Run(() => executor.ExecuteAsync(root, plan, options, progress, ct), CancellationToken.None);
+            }
         }
         finally
         {
@@ -308,6 +377,7 @@ public sealed partial class MainViewModel : ObservableObject
         Items.Clear();
         _bySource.Clear();
         _plan = [];
+        _batchFiles = [];
         RootFolder = null;
         IsSummaryOpen = false;
         Phase = AppPhase.SelectFolder;
@@ -476,7 +546,7 @@ public sealed partial class MainViewModel : ObservableObject
             ? null
             : $"Senza chiave TMDb i film non vengono riconosciuti e TVmaze, la fonte senza chiave, ha i titoli degli episodi solo in inglese: se il nome del file ne contiene già uno, Renamr tiene quello. " +
               $"Per i titoli in {SelectedLanguage.Label.ToLowerInvariant()} crea una chiave gratuita su themoviedb.org (Impostazioni ➔ API) e incollala nelle impostazioni.";
-        IsLanguageHintOpen = LanguageHint is not null;
+        IsLanguageHintOpen = LanguageHint is not null && !IsBatchMode;
     }
 
     private static string? DescribeFailures(ProviderHealth? health)
@@ -533,6 +603,87 @@ public sealed partial class MainViewModel : ObservableObject
         LastRunWasDryRun = false;
         Phase = AppPhase.Preview;
     }
+
+    // ---- Modalità "Rinomina file" ------------------------------------------------------------------
+
+    partial void OnIsBatchModeChanged(bool value)
+    {
+        if (_syncingFromSettings)
+        {
+            return;
+        }
+        IsLanguageHintOpen = LanguageHint is not null && !value;
+        IsProviderWarningOpen = false;
+        SaveBatchState();
+        if (RootFolder is not null && !IsBusy)
+        {
+            OpenFolderCommand.Execute(RootFolder);
+        }
+    }
+
+    /// <summary>Le regole cambiano a ogni tasto: si aspetta una pausa breve e si ricalcola una volta sola.</summary>
+    private void ScheduleBatchRefresh(bool rescan)
+    {
+        _pendingRescan |= rescan;
+        _ = DebouncedBatchRefreshAsync(++_batchRefreshVersion);
+    }
+
+    private async Task DebouncedBatchRefreshAsync(int version)
+    {
+        await Task.Delay(BatchPreviewDelay);
+        if (version != _batchRefreshVersion)
+        {
+            return; // è arrivato un altro tasto: ci pensa la chiamata più recente
+        }
+        var rescan = _pendingRescan;
+        _pendingRescan = false;
+        await RefreshBatchPreviewAsync(rescan);
+    }
+
+    /// <summary>
+    /// Ricalcola l'anteprima con le regole correnti. Senza <paramref name="rescan"/> usa l'elenco di file già letto;
+    /// con filtro o sottocartelle cambiati, o dopo una ridenominazione vera, rilegge la cartella.
+    /// </summary>
+    public async Task RefreshBatchPreviewAsync(bool rescan = false)
+    {
+        SaveBatchState();
+        if (!IsBatchMode || RootFolder is null || Phase == AppPhase.SelectFolder)
+        {
+            return;
+        }
+        if (IsBusy)
+        {
+            ScheduleBatchRefresh(rescan); // a fine analisi
+            return;
+        }
+        if (rescan || (Phase == AppPhase.Completed && !LastRunWasDryRun))
+        {
+            await OpenFolderCommand.ExecuteAsync(RootFolder);
+            return;
+        }
+
+        _plan = _services.GetRequiredService<BatchRenamePlanner>().Plan(RootFolder, _batchFiles, Batch.ToOptions());
+        _messenger.Send(new RunStartedMessage("Regole"));
+        var sameRows = Items.Count == _plan.Count && Items.Select(i => i.Entry.SourcePath).SequenceEqual(_plan.Select(e => e.SourcePath), StringComparer.Ordinal);
+        if (!sameRows)
+        {
+            // Ordine cambiato: si ricostruisce. Altrimenti si aggiornano le righe al loro posto (la lista non salta).
+            Items.Clear();
+            _bySource.Clear();
+        }
+        foreach (var entry in _plan)
+        {
+            AddOrUpdate(entry, publishIssue: false);
+            PublishIssue(entry, "Anteprima");
+        }
+        RecountStatuses();
+        IsSummaryOpen = false;
+        LastRunWasDryRun = false;
+        Phase = AppPhase.Preview;
+    }
+
+    private void SaveBatchState() =>
+        _services.GetRequiredService<BatchRenameStore>().Save(new BatchRenameState { BatchModeActive = IsBatchMode, Options = Batch.ToOptions() });
 
     // ---- Progresso -------------------------------------------------------------------------------
 

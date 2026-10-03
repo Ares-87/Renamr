@@ -28,9 +28,12 @@ public sealed record RenamePlanEntry
     public double Confidence { get; init; }
     public RenamrError? Error { get; init; }
 
+    /// <summary>Modalità "Rinomina file": cambia solo il nome, senza metadati né date (quindi senza <see cref="Metadata"/>).</summary>
+    public bool NameOnly { get; init; }
+
     public string SourceName => Path.GetFileName(SourcePath);
     public string? TargetName => TargetPath is null ? null : Path.GetFileName(TargetPath);
 
     public bool IsActionable => Status is PlanStatus.Ready or PlanStatus.LowConfidence or PlanStatus.Unchanged
-                                && TargetPath is not null && Metadata is not null;
+                                && TargetPath is not null && (Metadata is not null || NameOnly);
 }
