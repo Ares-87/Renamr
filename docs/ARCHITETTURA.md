@@ -11,7 +11,7 @@ Applicazione desktop Windows per riconoscere, rinominare e "datare" correttament
 | MVVM | **CommunityToolkit.Mvvm 8.4** | `[ObservableProperty]` su proprietà `partial` (compatibili AOT/WinRT), `[RelayCommand]` async con cancellazione automatica, `IMessenger` per il pannello errori. |
 | Tag | **TagLibSharp 2.3** | ID3v2.4, Vorbis/FLAC, atomi MP4, tag Matroska, RIFF INFO, ASF. |
 | Film | **TMDbLib 3.0** (TMDb) + **OMDb** via HttpClient | TMDb primario, OMDb come fallback. |
-| Serie / anime | **TheTVDB v4**, **TVmaze**, **AniDB** via HttpClient | TheTVDB primario se c'è la chiave, TVmaze senza chiave, AniDB prima di tutti per gli anime. |
+| Serie / anime | **TMDbLib** (TMDb TV), **TheTVDB v4**, **TVmaze**, **AniDB** via HttpClient | AniDB prima di tutti per gli anime, poi TMDb (stessa chiave dei film), TheTVDB se c'è la chiave, TVmaze senza chiave. |
 | Musica | **AcoustID** (impronta Chromaprint con `fpcalc.exe`) + **MusicBrainz** (`MusicBrainzAPI`, namespace `Hqub.MusicBrainz`) | Vedi §5 sul perché `fpcalc` invece di AcoustID.NET. |
 | Resilienza | **Polly v8**: `AddStandardResilienceHandler` sui client REST; `ResiliencePipeline` esplicita per TMDbLib | Retry esponenziale con jitter, circuit breaker, timeout per tentativo e totale, rispetto di `Retry-After`. |
 
@@ -52,7 +52,7 @@ src/
   Renamr.Services/
     IO/                      # PathBoundary, SafeFileOperations, IoErrorClassifier
     Metadata/                # TagLibMetadataWriter/Reader, Mp4HeaderDatePatcher, MatroskaDatePatcher
-    Providers/Movies|Tv|Music# TMDb, OMDb, TheTVDB, TVmaze, AniDB, AcoustID, MusicBrainz
+    Providers/Movies|Tv|Music# TMDb (film e serie), OMDb, TheTVDB, TVmaze, AniDB, AcoustID, MusicBrainz
     Matching/                # CascadingMetadataResolver (fallback a cascata)
     Resilience/              # pipeline Polly, RequestThrottle (AniDB, MusicBrainz)
     Pipeline/                # MediaScanner → RenamePlanner → RenameExecutor/MediaFileProcessor, RenameJournal
@@ -103,7 +103,7 @@ tests/Renamr.Tests/          # 77 test xUnit + file multimediali minuscoli gener
 ## 6. Cosa è stato verificato e cosa no
 
 - `Renamr.Core`, `Renamr.Services`, `Renamr.Presentation` e i test **compilano con .NET 10 senza warning** (analizzatori `latest-recommended`, warning trattati come errori).
-- **77 test xUnit verdi**: parser, template, similarità e cascata dei provider, boundary check (traversal, prefissi, symlink), lock, ReadOnly, move senza sovrascrittura, date, scrittura tag reale su MP3/FLAC/MP4/MKV, pipeline completa (rinomina + tag + date + sottotitoli, dry run, file bloccato che non ferma la coda, conflitti, cartelle da template, annulla), ViewModel su un "thread UI" simulato, impostazioni cifrate.
+- **93 test xUnit verdi**: parser, template, similarità e cascata dei provider, boundary check (traversal, prefissi, symlink), lock, ReadOnly, move senza sovrascrittura, date, scrittura tag reale su MP3/FLAC/MP4/MKV, pipeline completa (rinomina + tag + date + sottotitoli, dry run, file bloccato che non ferma la coda, conflitti, cartelle da template, annulla), ViewModel su un "thread UI" simulato, impostazioni cifrate.
 - Le date scritte sono state controllate anche con **ffprobe**: `creation_time=1999-03-31T12:00:00Z` su MP4/M4A/MKV, `date=1999-03-31` su MP3.
 - I test girano su Linux: `SetCreationTimeUtc` lì non è verificabile (il test lo controlla solo su Windows) e i codici HRESULT Win32 sono coperti da test sul classificatore.
 - **Non compilato qui: `Renamr.App` (WinUI 3)**. Il compilatore XAML di Windows App SDK gira solo su Windows. I file XAML sono XML valido e i ViewModel a cui si legano sono compilati e testati, ma la prima build su Windows può richiedere piccoli ritocchi.
@@ -125,6 +125,7 @@ Poi: copiare `fpcalc.exe` in `src/Renamr.App/Tools/` per il riconoscimento acust
 | Fonte | Chiave | Titoli nella lingua scelta |
 |---|---|---|
 | TMDb (film) | gratuita, registrazione | sì (titolo e trama tradotti dalla community) |
+| TMDb (serie, anime) | la stessa dei film | sì, serie ed episodi; se un episodio non è tradotto si usa il titolo inglese |
 | OMDb (film) | gratuita con limiti | no, solo inglese |
 | TheTVDB (serie) | registrazione | sì, traduzioni di serie ed episodi (`/translations/ita`) |
 | TVmaze (serie, anime) | nessuna | solo il titolo della serie, dagli AKA del paese; episodi in inglese |
@@ -132,9 +133,14 @@ Poi: copiare `fpcalc.exe` in `src/Renamr.App/Tools/` per il riconoscimento acust
 | MusicBrainz (musica) | nessuna | non applicabile |
 | AcoustID (musica) | gratuita | non applicabile |
 
-La lingua si sceglie in Impostazioni ("it-IT"); ogni provider la converte nel formato che usa (`LanguagePreference`).
+La lingua si sceglie in Impostazioni ("it-IT"), dal selettore in basso o dal menu contestuale della lista; ogni provider la converte nel formato che usa (`LanguagePreference`). Cambiarla rifà subito le ricerche. Senza chiave TMDb l'app lo segnala con un avviso nell'anteprima, perché i titoli degli episodi resterebbero in inglese.
 
-## 9. Estendere
+## 9. Scelte rapide e versione
+
+- **Tasto destro sulla lista**: formato del nome (preset in `TemplatePresets`, con anteprima sulla riga nel tooltip), lingua dei titoli, copia del nuovo nome, Esplora File. Un formato scelto diventa il template del tipo e i nomi si ricalcolano in locale (`RenamePlanner.Rerender`), senza nuove ricerche online.
+- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.1.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
+
+## 10. Estendere
 
 - **Nuovo provider**: implementare `IMetadataProvider` (nome, priorità, tipi supportati, `SearchAsync` che lancia `ProviderException` sugli errori di servizio) e aggiungere una riga in `ServiceCollectionExtensions`.
 - **Nuovo segnaposto**: un caso in `NameTemplateEngine.Resolve`.

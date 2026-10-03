@@ -3,8 +3,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
+using Renamr.Core.Abstractions;
 using Renamr.Core.Errors;
 using Renamr.Core.Models;
+using Renamr.Core.Options;
+using Renamr.Core.Templating;
 using Renamr.Presentation.Messages;
 using Renamr.Presentation.Services;
 using Renamr.Services.Pipeline;
@@ -24,6 +27,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly Dictionary<string, FileItemViewModel> _bySource = new(StringComparer.OrdinalIgnoreCase);
     private string? _lastJournal;
     private IReadOnlyList<RenamePlanEntry> _plan = [];
+    private bool _syncingLanguage;
 
     public MainViewModel(IServiceProvider services, IFolderPickerService folderPicker, IMessenger messenger, IssuesViewModel issues)
     {
@@ -31,9 +35,31 @@ public sealed partial class MainViewModel : ObservableObject
         _folderPicker = folderPicker;
         _messenger = messenger;
         Issues = issues;
+        SyncFromSettings();
     }
 
     public IssuesViewModel Issues { get; }
+
+    /// <summary>"Renamr v1.1.0": accanto al nome, per capire al volo se si sta usando l'ultima revisione.</summary>
+    public string AppTitle => AppInfo.Title;
+
+    /// <summary>Versione con commit, nel tooltip.</summary>
+    public string AppDetails => AppInfo.Details;
+
+    public IReadOnlyList<LanguageOption> Languages => LanguageOption.All;
+
+    /// <summary>Selettore rapido della lingua dei titoli: cambiarla rifà subito le ricerche.</summary>
+    [ObservableProperty]
+    public partial LanguageOption SelectedLanguage { get; set; } = LanguageOption.All[0];
+
+    /// <summary>Spiega perché alcuni titoli restano in inglese (manca la chiave TMDb).</summary>
+    [ObservableProperty]
+    public partial string? LanguageHint { get; private set; }
+
+    [ObservableProperty]
+    public partial bool IsLanguageHintOpen { get; set; }
+
+    private ISettingsStore Settings => _services.GetRequiredService<ISettingsStore>();
 
     public ObservableCollection<FileItemViewModel> Items { get; } = [];
 
@@ -273,6 +299,171 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Dopo una simulazione si può tornare all'anteprima e lanciare quella vera.</summary>
     [RelayCommand]
     private Task ReanalyzeAsync() => OpenFolderCommand.ExecuteAsync(RootFolder);
+
+    // ---- Lingua e formato al volo ---------------------------------------------------------------
+
+    partial void OnSelectedLanguageChanged(LanguageOption value)
+    {
+        if (!_syncingLanguage && value is not null)
+        {
+            SetLanguageCommand.Execute(value.Tag);
+        }
+    }
+
+    /// <summary>Cambia la lingua dei titoli e, se c'è una cartella aperta, rifà l'analisi.</summary>
+    [RelayCommand]
+    private async Task SetLanguageAsync(string? tag)
+    {
+        var settings = Settings;
+        if (string.IsNullOrWhiteSpace(tag) || IsBusy || string.Equals(tag, settings.Current.Matching.Language, StringComparison.OrdinalIgnoreCase))
+        {
+            SyncFromSettings();
+            return;
+        }
+
+        var current = settings.Current;
+        await settings.SaveAsync(new RenamrSettings
+        {
+            Templates = current.Templates,
+            Matching = new MatchingSettings
+            {
+                HighConfidenceThreshold = current.Matching.HighConfidenceThreshold,
+                MinimumConfidence = current.Matching.MinimumConfidence,
+                MaxParallelLookups = current.Matching.MaxParallelLookups,
+                Language = tag,
+            },
+            Keys = current.Keys,
+            VideoExtensions = current.VideoExtensions,
+            AudioExtensions = current.AudioExtensions,
+            CompanionExtensions = current.CompanionExtensions,
+        });
+        SyncFromSettings();
+        await ReanalyzeIfOpenAsync();
+    }
+
+    /// <summary>Formato scelto dal menu contestuale: diventa il nuovo template del tipo e i nomi si ricalcolano subito.</summary>
+    [RelayCommand]
+    private async Task ApplyTemplatePresetAsync(TemplatePreset? preset)
+    {
+        if (preset is null || IsBusy)
+        {
+            return;
+        }
+        var settings = Settings;
+        var current = settings.Current;
+        if (current.Templates.For(preset.Kind) == preset.Pattern)
+        {
+            return;
+        }
+        await settings.SaveAsync(new RenamrSettings
+        {
+            Templates = current.Templates.With(preset.Kind, preset.Pattern),
+            Matching = current.Matching,
+            Keys = current.Keys,
+            VideoExtensions = current.VideoExtensions,
+            AudioExtensions = current.AudioExtensions,
+            CompanionExtensions = current.CompanionExtensions,
+        });
+        await RefreshNamesAsync();
+    }
+
+    /// <summary>Dopo il Salva delle impostazioni: lingua cambiata = nuove ricerche, altrimenti basta ricalcolare i nomi.</summary>
+    [RelayCommand]
+    private async Task SettingsSavedAsync(string? previousLanguage)
+    {
+        SyncFromSettings();
+        if (!string.Equals(previousLanguage, Settings.Current.Matching.Language, StringComparison.OrdinalIgnoreCase))
+        {
+            await ReanalyzeIfOpenAsync();
+        }
+        else
+        {
+            await RefreshNamesAsync();
+        }
+    }
+
+    /// <summary>Template attivo per un tipo (serve al menu per mettere la spunta sulla voce corrente).</summary>
+    public string TemplateFor(MediaKind kind) => Settings.Current.Templates.For(kind);
+
+    public string CurrentLanguage => Settings.Current.Matching.Language;
+
+    /// <summary>Come diventerebbe il nome di questa riga con un altro formato (tooltip del menu contestuale).</summary>
+    public string? PreviewName(FileItemViewModel item, TemplatePreset preset)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        ArgumentNullException.ThrowIfNull(preset);
+        if (item.Entry.Metadata is not { } metadata || item.Entry.Parsed is not { } parsed)
+        {
+            return null;
+        }
+        try
+        {
+            return _services.GetRequiredService<INameTemplateEngine>().Render(preset.Pattern, metadata, parsed, parsed.Extension);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private void SyncFromSettings()
+    {
+        var current = Settings.Current;
+        _syncingLanguage = true;
+        try
+        {
+            SelectedLanguage = LanguageOption.For(current.Matching.Language);
+        }
+        finally
+        {
+            _syncingLanguage = false;
+        }
+        OnPropertyChanged(nameof(CurrentLanguage));
+
+        var english = current.Matching.Language.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+        LanguageHint = english || !string.IsNullOrWhiteSpace(current.Keys.TmdbApiKey)
+            ? null
+            : $"Senza chiave TMDb i film non vengono riconosciuti e i titoli degli episodi restano in inglese: TVmaze, la fonte senza chiave, li ha solo in inglese. " +
+              $"Per i titoli in {SelectedLanguage.Label.ToLowerInvariant()} crea una chiave gratuita su themoviedb.org (Impostazioni ➔ API) e incollala nelle impostazioni.";
+        IsLanguageHintOpen = LanguageHint is not null;
+    }
+
+    private async Task ReanalyzeIfOpenAsync()
+    {
+        if (RootFolder is not null && !IsBusy)
+        {
+            await OpenFolderCommand.ExecuteAsync(RootFolder);
+        }
+    }
+
+    /// <summary>Nuovi nomi con i template correnti, senza rifare le ricerche online.</summary>
+    private async Task RefreshNamesAsync()
+    {
+        if (RootFolder is null || IsBusy || _plan.Count == 0)
+        {
+            return;
+        }
+        if (Phase == AppPhase.Completed && !LastRunWasDryRun)
+        {
+            // Dopo una ridenominazione vera il piano non descrive più il disco: si rianalizza.
+            await ReanalyzeIfOpenAsync();
+            return;
+        }
+
+        _plan = _services.GetRequiredService<RenamePlanner>().Rerender(RootFolder, _plan);
+        _messenger.Send(new RunStartedMessage("Formato"));
+        Items.Clear();
+        _bySource.Clear();
+        foreach (var entry in _plan)
+        {
+            AddOrUpdate(entry, publishIssue: false);
+            PublishIssue(entry, "Analisi");
+        }
+        RecountStatuses();
+        IsSummaryOpen = false;
+        LastRunWasDryRun = false;
+        Phase = AppPhase.Preview;
+    }
 
     // ---- Progresso -------------------------------------------------------------------------------
 

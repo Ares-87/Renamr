@@ -33,6 +33,23 @@ public sealed class TemplateSettings
         MediaKind.Music => Music,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Nessun template per questo tipo."),
     };
+
+    /// <summary>Copia con il template di un solo tipo sostituito.</summary>
+    public TemplateSettings With(MediaKind kind, string pattern) => kind switch
+    {
+        MediaKind.Movie => new TemplateSettings { Movie = pattern, Episode = Episode, Anime = Anime, Music = Music },
+        MediaKind.Episode => new TemplateSettings { Movie = Movie, Episode = pattern, Anime = Anime, Music = Music },
+        MediaKind.Anime => new TemplateSettings { Movie = Movie, Episode = Episode, Anime = pattern, Music = Music },
+        MediaKind.Music => new TemplateSettings { Movie = Movie, Episode = Episode, Anime = Anime, Music = pattern },
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Nessun template per questo tipo."),
+    };
+
+    /// <summary>
+    /// Quale template usa un file: anime con "S01E05" nel nome usano quello degli episodi,
+    /// con numerazione assoluta quello degli anime.
+    /// </summary>
+    public static MediaKind KindFor(MediaKind kind, ParsedMediaName? parsed) =>
+        kind == MediaKind.Anime && parsed is not null && parsed.AbsoluteEpisode is null ? MediaKind.Episode : kind;
 }
 
 public sealed class MatchingSettings

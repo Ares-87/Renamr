@@ -76,7 +76,7 @@ public sealed partial class NameTemplateEngine : INameTemplateEngine
         {
             "title" => md.Title,
             "showtitle" or "show" or "series" => md.Title,
-            "originaltitle" => md.OriginalTitle,
+            "originaltitle" => md.OriginalTitle ?? md.Title,
             "year" => md.Year,
             "releasedate" or "date" => md.ReleaseDate,
             "season" => md.Season,

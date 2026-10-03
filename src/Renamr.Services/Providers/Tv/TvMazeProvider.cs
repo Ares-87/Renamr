@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
@@ -22,6 +23,9 @@ public sealed partial class TvMazeProvider(HttpClient http, ISettingsStore? sett
     public int Priority => 25;
     public bool IsConfigured => true;
     public bool Supports(MediaKind kind) => kind is MediaKind.Episode or MediaKind.Anime;
+
+    /// <summary>Un solo download degli AKA per serie: una stagione intera non ripete la stessa chiamata 20 volte.</summary>
+    private readonly ConcurrentDictionary<(int ShowId, string Country), string?> _akaCache = new();
 
     [GeneratedRegex("<[^>]+>")]
     private static partial Regex Html();
@@ -94,6 +98,10 @@ public sealed partial class TvMazeProvider(HttpClient http, ISettingsStore? sett
         {
             return null;
         }
+        if (_akaCache.TryGetValue((showId, language.Country), out var cached))
+        {
+            return cached;
+        }
         List<Aka> akas;
         try
         {
@@ -103,7 +111,9 @@ public sealed partial class TvMazeProvider(HttpClient http, ISettingsStore? sett
         {
             return null; // il titolo localizzato è un di più: non deve far fallire il riconoscimento
         }
-        return akas.FirstOrDefault(a => string.Equals(a.Country?.Code, language.Country, StringComparison.OrdinalIgnoreCase))?.Name;
+        var name = akas.FirstOrDefault(a => string.Equals(a.Country?.Code, language.Country, StringComparison.OrdinalIgnoreCase))?.Name;
+        _akaCache[(showId, language.Country)] = name;
+        return name;
     }
 
     private async Task<Episode?> GetEpisodeAsync(int showId, MediaQuery query, CancellationToken ct)
