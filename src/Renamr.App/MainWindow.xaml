@@ -35,7 +35,11 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <FontIcon Glyph="&#xE8AC;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-            <TextBlock Grid.Column="1" Text="Renamr" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBlock Grid.Column="1"
+                       Text="{x:Bind ViewModel.AppTitle}"
+                       ToolTipService.ToolTip="{x:Bind ViewModel.AppDetails}"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
             <TextBlock Grid.Column="2"
                        Text="{x:Bind ViewModel.RootFolder, Mode=OneWay}"
                        VerticalAlignment="Center"
@@ -74,6 +78,13 @@
                         <TextBlock Text="Scegli cartella…" />
                     </StackPanel>
                 </Button>
+                <ComboBox Margin="0,8,0,0"
+                          HorizontalAlignment="Center"
+                          MinWidth="200"
+                          Header="Lingua dei titoli"
+                          ItemsSource="{x:Bind ViewModel.Languages}"
+                          SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}"
+                          DisplayMemberPath="Label" />
             </StackPanel>
         </Grid>
 
@@ -83,6 +94,7 @@
               RowSpacing="12"
               Visibility="{x:Bind ViewModel.IsPreviewVisible, Mode=OneWay}">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -121,8 +133,15 @@
                 </InfoBar.ActionButton>
             </InfoBar>
 
+            <!-- Perché alcuni titoli restano in inglese -->
+            <InfoBar Grid.Row="2"
+                     Severity="Informational"
+                     Title="Titoli tradotti"
+                     IsOpen="{x:Bind ViewModel.IsLanguageHintOpen, Mode=TwoWay}"
+                     Message="{x:Bind ViewModel.LanguageHint, Mode=OneWay}" />
+
             <!-- Intestazione colonne -->
-            <Grid Grid.Row="2" Padding="16,0" ColumnSpacing="12">
+            <Grid Grid.Row="3" Padding="16,0" ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="*" />
@@ -135,8 +154,10 @@
             </Grid>
 
             <!-- Tabella a due colonne: Originale ➔ Proposto. ListView virtualizzata: regge decine di migliaia di righe. -->
-            <ListView Grid.Row="3"
+            <!-- Tasto destro: formato del nome e lingua al volo. -->
+            <ListView Grid.Row="4"
                       ItemsSource="{x:Bind ViewModel.Items}"
+                      ContextRequested="List_ContextRequested"
                       SelectionMode="None"
                       Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -145,7 +166,9 @@
                       Padding="0,4">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="vm:FileItemViewModel">
-                        <Grid Padding="4,10" ColumnSpacing="12" Opacity="{x:Bind ui:Ui.RowOpacity(Status), Mode=OneWay}">
+                        <Grid Padding="4,10" ColumnSpacing="12" Background="Transparent"
+                              ContextRequested="Row_ContextRequested"
+                              Opacity="{x:Bind ui:Ui.RowOpacity(Status), Mode=OneWay}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="140" />
                                 <ColumnDefinition Width="*" />
@@ -253,8 +276,15 @@
                 <ToggleSwitch IsOn="{x:Bind ViewModel.IsDryRun, Mode=TwoWay}"
                               OnContent="Simulazione (Dry Run)"
                               OffContent="Simulazione (Dry Run)"
-                              ToolTipService.ToolTip="Calcola e verifica tutto senza modificare alcun file" />
-                <CheckBox IsChecked="{x:Bind ViewModel.IncludeLowConfidence, Mode=TwoWay}">
+                              ToolTipService.ToolTip="Prova generale: controlla permessi, file bloccati e conflitti senza modificare alcun file" />
+                <ComboBox ItemsSource="{x:Bind ViewModel.Languages}"
+                          SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
+                          MinWidth="130"
+                          VerticalAlignment="Center"
+                          ToolTipService.ToolTip="Lingua dei titoli: cambiandola le ricerche ripartono subito" />
+                <CheckBox IsChecked="{x:Bind ViewModel.IncludeLowConfidence, Mode=TwoWay}"
+                          ToolTipService.ToolTip="Rinomina anche i file riconosciuti con poca sicurezza (righe gialle). Controllali prima nell'anteprima.">
                     <TextBlock>
                         <Run Text="Includi bassa confidenza" />
                         <Run Text="(" /><Run Text="{x:Bind ViewModel.LowConfidenceCount, Mode=OneWay}" /><Run Text=")" />

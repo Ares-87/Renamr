@@ -85,7 +85,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string Language { get; set; } = "it-IT";
 
-    public IReadOnlyList<string> Languages { get; } = ["it-IT", "en-US", "es-ES", "fr-FR", "de-DE", "ja-JP"];
+    public IReadOnlyList<string> Languages { get; } = [.. LanguageOption.All.Select(l => l.Tag)];
 
     public string MoviePreview => Preview(MovieTemplate, SampleMovie, SampleParsed, ".mkv");
     public string EpisodePreview => Preview(EpisodeTemplate, SampleEpisode, null, ".mkv");

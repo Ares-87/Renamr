@@ -12,6 +12,7 @@ using Renamr.Services.Pipeline;
 using Renamr.Services.Providers;
 using Renamr.Services.Providers.Movies;
 using Renamr.Services.Providers.Music;
+using Renamr.Services.Providers.Tmdb;
 using Renamr.Services.Providers.Tv;
 
 namespace Renamr.Services;
@@ -47,7 +48,9 @@ public static class ServiceCollectionExtensions
         AddApiClient(services, AniDbProvider.HttpClientName, null, totalTimeout: TimeSpan.FromMinutes(3)); // dump titoli ~10 MB
 
         // Provider: aggiungerne uno = una riga qui.
+        services.AddSingleton<TmdbClientAccessor>();
         services.AddSingleton<IMetadataProvider, TmdbMovieProvider>();
+        services.AddSingleton<IMetadataProvider, TmdbTvProvider>();
         services.AddSingleton<IMetadataProvider>(sp => new OmdbProvider(Client(sp, OmdbProvider.HttpClientName), sp.GetRequiredService<ISettingsStore>()));
         services.AddSingleton<IMetadataProvider>(sp => new TheTvdbProvider(Client(sp, TheTvdbProvider.HttpClientName), sp.GetRequiredService<ISettingsStore>()));
         services.AddSingleton<IMetadataProvider>(sp => new TvMazeProvider(Client(sp, TvMazeProvider.HttpClientName), sp.GetRequiredService<ISettingsStore>()));

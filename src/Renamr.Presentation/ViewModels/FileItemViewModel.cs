@@ -1,6 +1,7 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Renamr.Core.Models;
+using Renamr.Core.Options;
 
 namespace Renamr.Presentation.ViewModels;
 
@@ -40,6 +41,11 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     public bool IsActionable => Entry.IsActionable;
 
+    /// <summary>Quale formato usa questa riga (per il menu contestuale "Formato nome").</summary>
+    public MediaKind? TemplateKind => (Entry.Metadata?.Kind ?? Entry.Parsed?.Kind) is { } kind and not MediaKind.Unknown
+        ? TemplateSettings.KindFor(kind, Entry.Parsed)
+        : null;
+
     public string StatusText => Status switch
     {
         PlanStatus.Pending => "In attesa",
@@ -74,6 +80,7 @@ public sealed partial class FileItemViewModel : ObservableObject
             }.Where(s => !string.IsNullOrEmpty(s)))
             : null;
         OnPropertyChanged(nameof(IsActionable));
+        OnPropertyChanged(nameof(TemplateKind));
         OnPropertyChanged(nameof(StatusText));
     }
 
