@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "Renamr.sln",
+    "projects": [
+      "src\\Renamr.Core\\Renamr.Core.csproj",
+      "src\\Renamr.Services\\Renamr.Services.csproj",
+      "src\\Renamr.Presentation\\Renamr.Presentation.csproj",
+      "src\\Renamr.Linux\\Renamr.Linux.csproj",
+      "tests\\Renamr.Tests\\Renamr.Tests.csproj"
+    ]
+  }
+}

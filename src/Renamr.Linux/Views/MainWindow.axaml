@@ -1,0 +1,304 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Renamr.Presentation.ViewModels"
+        xmlns:ui="using:Renamr.Linux.Helpers"
+        xmlns:ctl="using:FluentAvalonia.UI.Controls"
+        x:Class="Renamr.Linux.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding AppTitle}"
+        Width="1120" Height="740" MinWidth="760" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+
+    <!-- Stessa struttura di Renamr.App/MainWindow.xaml: intestazione, contenuto, errori, barra azione. -->
+    <Window.Styles>
+        <Style Selector="Border.badge.success"><Setter Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" /></Style>
+        <Style Selector="Border.badge.success > TextBlock"><Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" /></Style>
+        <Style Selector="Border.badge.caution"><Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" /></Style>
+        <Style Selector="Border.badge.caution > TextBlock"><Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" /></Style>
+        <Style Selector="Border.badge.critical"><Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" /></Style>
+        <Style Selector="Border.badge.critical > TextBlock"><Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" /></Style>
+        <Style Selector="Border.badge.neutral"><Setter Property="Background" Value="{DynamicResource SystemFillColorNeutralBackgroundBrush}" /></Style>
+        <Style Selector="Border.badge.neutral > TextBlock"><Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" /></Style>
+        <Style Selector="TextBlock.detail.success"><Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" /></Style>
+        <Style Selector="TextBlock.detail.caution"><Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" /></Style>
+        <Style Selector="TextBlock.detail.critical"><Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" /></Style>
+        <Style Selector="TextBlock.detail.neutral"><Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" /></Style>
+        <Style Selector="Rectangle#DropZoneOutline.active">
+            <Setter Property="Stroke" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="Fill" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        </Style>
+    </Window.Styles>
+
+    <Grid x:Name="RootGrid" DragDrop.AllowDrop="True" RowDefinitions="48,*,Auto,Auto">
+
+        <!-- ═══ Intestazione: nome e versione, cartella aperta ═══ -->
+        <Grid Margin="16,0" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12">
+            <ctl:FASymbolIcon Symbol="Rename" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+            <TextBlock Grid.Column="1" Classes="caption" VerticalAlignment="Center"
+                       Text="{Binding AppTitle}"
+                       ToolTip.Tip="{Binding AppDetails}" />
+            <TextBlock Grid.Column="2" Classes="caption" VerticalAlignment="Center"
+                       Text="{Binding RootFolder}"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+        </Grid>
+
+        <!-- ═══ FASE 1 · Selezione & Drag-and-Drop ═══ -->
+        <Grid Grid.Row="1" Margin="48,24,48,48" IsVisible="{Binding IsSelectPhase}">
+            <Rectangle x:Name="DropZoneOutline"
+                       RadiusX="12" RadiusY="12"
+                       StrokeThickness="2"
+                       StrokeDashArray="5,4"
+                       Stroke="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
+                       Fill="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="440">
+                <ctl:FASymbolIcon Symbol="Folder" FontSize="56" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                <TextBlock x:Name="DropZoneTitle"
+                           Text="Trascina qui la cartella della tua libreria"
+                           Theme="{StaticResource SubtitleTextBlockStyle}"
+                           TextAlignment="Center" HorizontalAlignment="Center" />
+                <TextBlock Text="Film, serie TV, anime e musica vengono riconosciuti automaticamente. Nulla viene modificato finché non confermi."
+                           Theme="{StaticResource BodyTextBlockStyle}"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           TextAlignment="Center" TextWrapping="Wrap" />
+                <Button Margin="0,12,0,0" HorizontalAlignment="Center" Classes="accent"
+                        Command="{Binding PickFolderCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ctl:FASymbolIcon Symbol="OpenFolder" FontSize="16" />
+                        <TextBlock Text="Scegli cartella…" />
+                    </StackPanel>
+                </Button>
+                <StackPanel Margin="0,8,0,0" HorizontalAlignment="Center" Spacing="4">
+                    <TextBlock Text="Lingua dei titoli" />
+                    <ComboBox MinWidth="200"
+                              ItemsSource="{Binding Languages}"
+                              SelectedItem="{Binding SelectedLanguage}"
+                              DisplayMemberBinding="{Binding Label, x:DataType=vm:LanguageOption}" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- ═══ FASE 2 · Anteprima intelligente (Diff View) ═══ -->
+        <Grid Grid.Row="1" Margin="24,8,24,0" RowSpacing="12" RowDefinitions="Auto,Auto,Auto,Auto,*"
+              IsVisible="{Binding IsPreviewVisible}">
+
+            <!-- Riepilogo a pillole: niente toolbar, solo informazione -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Border Classes="badge success">
+                    <TextBlock><Run Text="Pronti" /> <Run Text="{Binding ReadyCount}" /></TextBlock>
+                </Border>
+                <Border Classes="badge caution">
+                    <TextBlock><Run Text="Bassa confidenza" /> <Run Text="{Binding LowConfidenceCount}" /></TextBlock>
+                </Border>
+                <Border Classes="badge critical">
+                    <TextBlock><Run Text="Errori" /> <Run Text="{Binding ErrorCount}" /></TextBlock>
+                </Border>
+            </StackPanel>
+
+            <!-- Esito dell'esecuzione, con "Annulla" a portata di mano -->
+            <ctl:FAInfoBar Grid.Row="1"
+                           IsOpen="{Binding IsSummaryOpen}"
+                           Title="{Binding SummaryTitle}"
+                           Message="{Binding SummaryMessage}"
+                           Severity="{Binding SummaryHasErrors, Converter={x:Static ui:Ui.Severity}}">
+                <ctl:FAInfoBar.ActionButton>
+                    <Button Content="Annulla ridenominazione"
+                            Command="{Binding UndoCommand}"
+                            IsVisible="{Binding CanUndo}" />
+                </ctl:FAInfoBar.ActionButton>
+            </ctl:FAInfoBar>
+
+            <!-- Perché alcuni titoli restano in inglese, e quali date questo disco permette di cambiare -->
+            <StackPanel Grid.Row="2" Spacing="8">
+                <ctl:FAInfoBar Severity="Warning"
+                               Title="Un database ha dato errore"
+                               IsOpen="{Binding IsProviderWarningOpen}"
+                               Message="{Binding ProviderWarning}" />
+                <ctl:FAInfoBar Severity="Informational"
+                               Title="Titoli tradotti"
+                               IsOpen="{Binding IsLanguageHintOpen}"
+                               Message="{Binding LanguageHint}" />
+                <ctl:FAInfoBar x:Name="DateHintBar"
+                               Severity="Informational"
+                               Title="Data di creazione"
+                               IsOpen="False" />
+            </StackPanel>
+
+            <!-- Intestazione colonne -->
+            <Grid Grid.Row="3" Margin="16,0" ColumnDefinitions="140,*,24,*" ColumnSpacing="12">
+                <TextBlock Text="Stato" Classes="columnHeader" />
+                <TextBlock Grid.Column="1" Text="Nome originale" Classes="columnHeader" />
+                <TextBlock Grid.Column="3" Text="Nuovo nome proposto" Classes="columnHeader" />
+            </Grid>
+
+            <!-- Tabella a due colonne: Originale ➔ Proposto. ListBox virtualizzata: regge decine di migliaia di righe. -->
+            <!-- Tasto destro: formato del nome e lingua al volo. -->
+            <ListBox x:Name="FileList"
+                     Grid.Row="4"
+                     Classes="diff"
+                     ItemsSource="{Binding Items}"
+                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                     BorderThickness="1"
+                     CornerRadius="8"
+                     Padding="0,4">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FileItemViewModel">
+                        <Grid Margin="4,10" ColumnDefinitions="140,*,24,*" ColumnSpacing="12" Background="Transparent"
+                              Opacity="{Binding Status, Converter={x:Static ui:Ui.RowOpacity}}">
+
+                            <Border Classes="badge"
+                                    Classes.success="{Binding Status, Converter={x:Static ui:Ui.IsSuccess}}"
+                                    Classes.caution="{Binding Status, Converter={x:Static ui:Ui.IsCaution}}"
+                                    Classes.critical="{Binding Status, Converter={x:Static ui:Ui.IsCritical}}"
+                                    Classes.neutral="{Binding Status, Converter={x:Static ui:Ui.IsNeutral}}">
+                                <TextBlock Text="{Binding StatusText}" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding OriginalName}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip.Tip="{Binding OriginalName}" />
+                                <TextBlock Text="{Binding RelativeFolder}"
+                                           IsVisible="{Binding RelativeFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           Classes="caption"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+
+                            <ctl:FASymbolIcon Grid.Column="2" Symbol="Forward" FontSize="12"
+                                              Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+
+                            <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ProposedName}"
+                                           FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip.Tip="{Binding ProposedName}" />
+                                <TextBlock Text="{Binding MatchSummary}"
+                                           IsVisible="{Binding MatchSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           Classes="caption"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{Binding Detail}"
+                                           IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           Classes="caption detail"
+                                           Classes.success="{Binding Status, Converter={x:Static ui:Ui.IsSuccess}}"
+                                           Classes.caution="{Binding Status, Converter={x:Static ui:Ui.IsCaution}}"
+                                           Classes.critical="{Binding Status, Converter={x:Static ui:Ui.IsCritical}}"
+                                           Classes.neutral="{Binding Status, Converter={x:Static ui:Ui.IsNeutral}}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <!-- ═══ Pannello collassabile Errori/Avvisi ═══ -->
+        <Expander Grid.Row="2"
+                  Margin="24,12,24,0"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Stretch"
+                  IsExpanded="{Binding Issues.IsExpanded}"
+                  IsVisible="{Binding Issues.HasIssues}">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <ctl:FASymbolIcon Symbol="Important" FontSize="16" Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                    <TextBlock Text="Errori e avvisi" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Issues.Header}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Expander.Header>
+            <ListBox x:Name="IssueList" ItemsSource="{Binding Issues.Issues}" MaxHeight="220" Classes="diff">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:IssueItemViewModel">
+                        <Grid Margin="0,6" ColumnDefinitions="Auto,56,2*,3*" ColumnSpacing="12" Background="Transparent"
+                              ToolTip.Tip="{Binding Detail}">
+                            <Panel>
+                                <ctl:FASymbolIcon Symbol="Important" FontSize="14" IsVisible="{Binding IsWarning}"
+                                                  Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                                <ctl:FASymbolIcon Symbol="Dismiss" FontSize="14" IsVisible="{Binding !IsWarning}"
+                                                  Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                            </Panel>
+                            <TextBlock Grid.Column="1" Text="{Binding Code}" FontFamily="monospace"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                            <TextBlock Grid.Column="2" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="3" Text="{Binding MessageWithDetail}" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Expander>
+
+        <!-- ═══ FASE 3 · Azione unica + monitoraggio in tempo reale ═══ -->
+        <Border Grid.Row="3"
+                Margin="0,12,0,0"
+                Padding="24,14"
+                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                IsVisible="{Binding IsPreviewVisible}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+
+                <!-- Opzioni (a riposo) -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" ItemSpacing="24" LineSpacing="8"
+                           IsVisible="{Binding !IsBusy}">
+                    <ToggleSwitch IsChecked="{Binding IsDryRun}"
+                                  OnContent="Simulazione (Dry Run)"
+                                  OffContent="Simulazione (Dry Run)"
+                                  ToolTip.Tip="Prova generale: controlla permessi, file bloccati e conflitti senza modificare alcun file" />
+                    <ComboBox ItemsSource="{Binding Languages}"
+                              SelectedItem="{Binding SelectedLanguage}"
+                              DisplayMemberBinding="{Binding Label, x:DataType=vm:LanguageOption}"
+                              MinWidth="130"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="Lingua dei titoli: cambiandola le ricerche ripartono subito" />
+                    <CheckBox Content="Scrivi metadati interni"
+                              IsChecked="{Binding WriteEmbeddedMetadata}"
+                              ToolTip.Tip="Scrive titolo, episodio e data anche dentro i file (tag MKV/MP4/MP3). Se è spento Renamr cambia solo il nome e le date del file." />
+                    <CheckBox IsChecked="{Binding IncludeLowConfidence}"
+                              ToolTip.Tip="Rinomina anche i file riconosciuti con poca sicurezza (righe gialle). Controllali prima nell'anteprima.">
+                        <TextBlock>
+                            <Run Text="Includi bassa confidenza" />
+                            <Run Text="(" /><Run Text="{Binding LowConfidenceCount}" /><Run Text=")" />
+                        </TextBlock>
+                    </CheckBox>
+                </WrapPanel>
+
+                <!-- Avanzamento (durante analisi/esecuzione) -->
+                <Grid VerticalAlignment="Center" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto"
+                      RowSpacing="6" ColumnSpacing="12"
+                      IsVisible="{Binding IsBusy}">
+                    <ctl:FAProgressRing Grid.RowSpan="2" Width="28" Height="28"
+                                        Minimum="0" Maximum="100"
+                                        IsIndeterminate="{Binding Total, Converter={x:Static ui:Ui.IsZero}}"
+                                        Value="{Binding ProgressValue}" />
+                    <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding ProgressPhase}" FontWeight="SemiBold" />
+                        <Run Text="  " />
+                        <Run Text="{Binding CurrentFile}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </TextBlock>
+                    <TextBlock Grid.Column="2" Text="{Binding ProgressText}" FontFamily="monospace" />
+                    <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                 Minimum="0" Maximum="100"
+                                 Value="{Binding ProgressValue}"
+                                 IsIndeterminate="{Binding Total, Converter={x:Static ui:Ui.IsZero}}" />
+                </Grid>
+
+                <!-- Pulsanti: uno primario, il resto discreto -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Command="{Binding CancelCommand}" Content="Annulla" IsVisible="{Binding IsBusy}" />
+                    <Button Click="Settings_Click" ToolTip.Tip="Impostazioni" IsVisible="{Binding !IsBusy}">
+                        <ctl:FASymbolIcon Symbol="Settings" FontSize="16" />
+                    </Button>
+                    <Button Content="Cambia cartella" Command="{Binding ResetCommand}" IsVisible="{Binding !IsBusy}" />
+                    <Button Classes="accent" Command="{Binding RunCommand}" MinWidth="220" IsVisible="{Binding !IsBusy}">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                            <ctl:FASymbolIcon Symbol="Rename" FontSize="16" />
+                            <TextBlock Text="{Binding PrimaryActionText}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

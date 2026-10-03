@@ -1,0 +1,117 @@
+<ctl:FAContentDialog xmlns="https://github.com/avaloniaui"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                     xmlns:ctl="using:FluentAvalonia.UI.Controls"
+                     xmlns:vm="using:Renamr.Presentation.ViewModels"
+                     x:Class="Renamr.Linux.Views.SettingsDialog"
+                     x:DataType="vm:SettingsViewModel"
+                     Title="Impostazioni"
+                     PrimaryButtonText="Salva"
+                     CloseButtonText="Annulla"
+                     DefaultButton="Primary"
+                     PrimaryButtonCommand="{Binding SaveCommand}">
+
+    <!-- Stessi campi di Renamr.App/Views/SettingsDialog.xaml. -->
+    <ctl:FAContentDialog.Resources>
+        <x:Double x:Key="ContentDialogMaxWidth">720</x:Double>
+    </ctl:FAContentDialog.Resources>
+
+    <ctl:FAContentDialog.Styles>
+        <Style Selector="TextBlock.preview">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="Margin" Value="2,4,0,0" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+    </ctl:FAContentDialog.Styles>
+
+    <ScrollViewer MaxHeight="560" Padding="0,0,16,0">
+        <StackPanel Spacing="20" MinWidth="560" MaxWidth="680">
+
+            <!-- Template con anteprima dal vivo -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Formato dei nomi" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+                <TextBlock Classes="hint"
+                           Text="Segnaposto: {Title} {Year} {Resolution} {Show Title} {Season:00} {Episode:00} {Episode Title} {Absolute:000} {Artist} {Album} {Track:00}. Usa / per organizzare in cartelle." />
+
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Film" />
+                    <TextBox Text="{Binding MovieTemplate}" />
+                    <TextBlock Classes="preview" Text="{Binding MoviePreview}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Serie TV" />
+                    <TextBox Text="{Binding EpisodeTemplate}" />
+                    <TextBlock Classes="preview" Text="{Binding EpisodePreview}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Anime (numerazione assoluta)" />
+                    <TextBox Text="{Binding AnimeTemplate}" />
+                    <TextBlock Classes="preview" Text="{Binding AnimePreview}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Musica" />
+                    <TextBox Text="{Binding MusicTemplate}" />
+                    <TextBlock Classes="preview" Text="{Binding MusicPreview}" />
+                </StackPanel>
+                <HyperlinkButton Content="Ripristina formati predefiniti" Command="{Binding RestoreDefaultTemplatesCommand}" Padding="0" />
+            </StackPanel>
+
+            <!-- Database online -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Database online" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+                <TextBlock Classes="hint"
+                           Text="Le chiavi sono cifrate con una chiave leggibile solo dal tuo utente Linux. TVmaze e MusicBrainz funzionano senza chiave; i provider senza chiave vengono saltati." />
+                <StackPanel>
+                    <TextBlock Classes="label" Text="TheMovieDB (API key v3)" />
+                    <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding TmdbApiKey}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="OMDb (API key)" />
+                    <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding OmdbApiKey}" />
+                </StackPanel>
+                <Grid ColumnDefinitions="2*,*" ColumnSpacing="12">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="TheTVDB (API key v4)" />
+                        <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding TheTvdbApiKey}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Classes="label" Text="PIN abbonato (opz.)" />
+                        <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding TheTvdbPin}" />
+                    </StackPanel>
+                </Grid>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="AcoustID (client key)" />
+                    <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding AcoustIdClientKey}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="AniDB (nome client registrato)" />
+                    <TextBox Text="{Binding AniDbClientName}" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Riconoscimento -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Riconoscimento" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+                <StackPanel>
+                    <TextBlock Classes="label">
+                        <Run Text="Confidenza minima per lo stato &quot;Pronto&quot; (%):" />
+                        <Run Text="{Binding HighConfidencePercent}" FontWeight="SemiBold" />
+                    </TextBlock>
+                    <Slider Minimum="50" Maximum="99" TickFrequency="1" IsSnapToTickEnabled="True"
+                            Value="{Binding HighConfidencePercent}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Lingua dei titoli" />
+                    <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}" MinWidth="200" />
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</ctl:FAContentDialog>

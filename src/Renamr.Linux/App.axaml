@@ -1,0 +1,39 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sty="using:FluentAvalonia.Styling"
+             x:Class="Renamr.Linux.App"
+             RequestedThemeVariant="Default">
+    <!-- Default: segue il tema chiaro/scuro del desktop, come l'app Windows. -->
+    <Application.Styles>
+        <!-- Linux non ha un colore d'accento di sistema: si usa il blu predefinito di Windows. -->
+        <sty:FluentAvaloniaTheme PreferSystemTheme="True" PreferUserAccentColor="False" CustomAccentColor="#0078D4" />
+
+        <!-- Badge di stato a "pillola" (stessi valori di Renamr.App) -->
+        <Style Selector="Border.badge">
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="10,2,10,3" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.badge > TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.columnHeader">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style Selector="TextBlock.caption">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- Lista della Diff View: righe senza evidenziazione di selezione, come SelectionMode="None" in WinUI. -->
+        <Style Selector="ListBox.diff ListBoxItem">
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Focusable" Value="False" />
+        </Style>
+        <Style Selector="ListBox.diff ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+    </Application.Styles>
+</Application>
