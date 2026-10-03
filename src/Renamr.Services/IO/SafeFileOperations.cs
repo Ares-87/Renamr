@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Renamr.Core.Errors;
+using Renamr.Core.Models;
 
 namespace Renamr.Services.IO;
 
@@ -137,16 +138,22 @@ public sealed class SafeFileOperations(ILogger<SafeFileOperations>? logger = nul
     /// La data di creazione si scrive solo dove il file system lo permette (vedi <see cref="FileCreationTime"/>):
     /// su Linux con ext4/Btrfs/exFAT cambia solo la data di modifica, e non è un errore.
     /// </summary>
-    public OperationResult SyncFileSystemDates(string path, DateOnly releaseDate)
+    public OperationResult SyncFileSystemDates(string path, DateOnly releaseDate) => SyncFileSystemDates(path, releaseDate, FileDateChoices.All);
+
+    /// <summary>Come sopra, ma solo con le date scelte dall'utente (creazione, modifica o tutte e due).</summary>
+    public OperationResult SyncFileSystemDates(string path, DateOnly releaseDate, FileDateChoices which)
     {
         var utc = ToStableUtc(releaseDate);
         try
         {
-            if (!FileCreationTime.TrySet(path, utc))
+            if (which.Creation && !FileCreationTime.TrySet(path, utc))
             {
                 _log.LogDebug("Data di creazione non modificabile su questo file system: {Path}", path);
             }
-            File.SetLastWriteTimeUtc(path, utc);
+            if (which.Modified)
+            {
+                File.SetLastWriteTimeUtc(path, utc);
+            }
             return OperationResult.Ok();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentOutOfRangeException or PlatformNotSupportedException)

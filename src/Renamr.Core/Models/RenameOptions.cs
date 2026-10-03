@@ -11,4 +11,10 @@ public sealed record RenameRunOptions
 
     public bool SyncFileSystemDates { get; init; } = true;
     public bool WriteEmbeddedMetadata { get; init; } = true;
+
+    /// <summary>Campi scritti nei tag quando <see cref="WriteEmbeddedMetadata"/> è acceso.</summary>
+    public EmbeddedMetadataFields EmbeddedFields { get; init; } = EmbeddedMetadataFields.All;
+
+    /// <summary>Date del file system impostate quando <see cref="SyncFileSystemDates"/> è acceso.</summary>
+    public FileDateChoices FileDates { get; init; } = FileDateChoices.All;
 }

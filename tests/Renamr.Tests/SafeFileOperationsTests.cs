@@ -1,4 +1,5 @@
 using Renamr.Core.Errors;
+using Renamr.Core.Models;
 using Renamr.Services.IO;
 
 namespace Renamr.Tests;
@@ -61,6 +62,22 @@ public class SafeFileOperationsTests : IDisposable
         Assert.True((await _io.MoveAsync(a, target, CancellationToken.None)).Succeeded);
         Assert.True(File.Exists(target));
         Assert.False(File.Exists(a));
+    }
+
+    [Fact]
+    public void Only_the_chosen_file_dates_change()
+    {
+        var file = _lib.File("m.mkv");
+        var original = File.GetLastWriteTimeUtc(file);
+
+        var result = _io.SyncFileSystemDates(file, new DateOnly(1999, 3, 31), new FileDateChoices { Modified = false });
+
+        Assert.True(result.Succeeded, result.Error?.ToString());
+        Assert.Equal(original, File.GetLastWriteTimeUtc(file));
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal(new DateTime(1999, 3, 31, 12, 0, 0, DateTimeKind.Utc), File.GetCreationTimeUtc(file));
+        }
     }
 
     [Fact]

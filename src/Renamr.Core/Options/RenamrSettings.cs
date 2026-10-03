@@ -58,6 +58,16 @@ public sealed class OutputSettings
 {
     /// <summary>Titolo, stagione/episodio e data scritti dentro il file (tag MKV/MP4/MP3). Si può spegnere.</summary>
     public bool WriteEmbeddedMetadata { get; set; } = true;
+
+    /// <summary>Quali campi finiscono nei tag (scelti nelle Impostazioni).</summary>
+    public EmbeddedMetadataFields EmbeddedFields { get; set; } = new();
+
+    /// <summary>Quali date del file (creazione, modifica) diventano la data di uscita.</summary>
+    public FileDateChoices FileDates { get; set; } = new();
+
+    /// <summary>Copia con il solo interruttore dei tag cambiato.</summary>
+    public OutputSettings WithWriteEmbeddedMetadata(bool value) =>
+        new() { WriteEmbeddedMetadata = value, EmbeddedFields = EmbeddedFields, FileDates = FileDates };
 }
 
 public sealed class MatchingSettings

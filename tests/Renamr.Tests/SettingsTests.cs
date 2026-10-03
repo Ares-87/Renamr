@@ -66,5 +66,47 @@ public class SettingsTests : IDisposable
         Assert.Equal(0.9, store.Current.Matching.HighConfidenceThreshold, 3);
     }
 
+    [Fact]
+    public async Task Metadata_choices_are_remembered_and_kept_by_the_quick_toggle()
+    {
+        var paths = new DefaultAppPaths(_lib.Root);
+        using (var store = new JsonSettingsStore(paths, new ReverseProtector()))
+        {
+            var vm = new SettingsViewModel(store, new NameTemplateEngine()) { WriteGenres = false, WriteDescription = false, SetCreationDate = false };
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            // L'interruttore rapido della finestra principale non deve azzerare le scelte per campo.
+            var current = store.Current;
+            await store.SaveAsync(new Core.Options.RenamrSettings
+            {
+                Templates = current.Templates, Matching = current.Matching, Keys = current.Keys,
+                Output = current.Output.WithWriteEmbeddedMetadata(false),
+            });
+        }
+
+        using var reloaded = new JsonSettingsStore(paths, new ReverseProtector());
+        var output = reloaded.Current.Output;
+        Assert.False(output.WriteEmbeddedMetadata);
+        Assert.False(output.EmbeddedFields.Genres);
+        Assert.False(output.EmbeddedFields.Description);
+        Assert.True(output.EmbeddedFields.Title);
+        Assert.False(output.FileDates.Creation);
+        Assert.True(output.FileDates.Modified);
+
+        var again = new SettingsViewModel(reloaded, new NameTemplateEngine());
+        Assert.False(again.WriteGenres);
+        Assert.False(again.SetCreationDate);
+        Assert.True(again.WriteReleaseDate);
+    }
+
+    [Fact]
+    public void Old_settings_without_choices_write_everything()
+    {
+        File.WriteAllText(Path.Combine(_lib.Root, "settings.json"), """{ "Output": { "WriteEmbeddedMetadata": true } }""");
+        using var store = new JsonSettingsStore(new DefaultAppPaths(_lib.Root), new ReverseProtector());
+        Assert.Equal(new Core.Models.EmbeddedMetadataFields(), store.Current.Output.EmbeddedFields);
+        Assert.True(store.Current.Output.FileDates.Creation);
+    }
+
     public void Dispose() => _lib.Dispose();
 }

@@ -84,6 +84,23 @@
                           MinWidth="200" />
             </StackPanel>
 
+            <!-- Metadati da scrivere: un interruttore per campo, ricordato -->
+            <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.IsMediaMode}">
+                <TextBlock Text="{x:Bind loc:Strings.Current.SettingsMetadata}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="{x:Bind loc:Strings.Current.SettingsMetadataHint}" Margin="0,0,0,6" />
+                <TextBlock Text="{x:Bind loc:Strings.Current.SettingsMetadataTags}" Style="{StaticResource CaptionTextBlockStyle}" />
+                <CheckBox Content="{x:Bind loc:Strings.Current.MetaTitle}" IsChecked="{x:Bind ViewModel.WriteTitle, Mode=TwoWay}" />
+                <CheckBox Content="{x:Bind loc:Strings.Current.MetaSeries}" IsChecked="{x:Bind ViewModel.WriteSeriesInfo, Mode=TwoWay}" />
+                <CheckBox Content="{x:Bind loc:Strings.Current.MetaReleaseDate}" IsChecked="{x:Bind ViewModel.WriteReleaseDate, Mode=TwoWay}" />
+                <CheckBox Content="{x:Bind loc:Strings.Current.MetaDescription}" IsChecked="{x:Bind ViewModel.WriteDescription, Mode=TwoWay}" />
+                <CheckBox Content="{x:Bind loc:Strings.Current.MetaGenres}" IsChecked="{x:Bind ViewModel.WriteGenres, Mode=TwoWay}" />
+                <CheckBox Content="{x:Bind loc:Strings.Current.MetaMusic}" IsChecked="{x:Bind ViewModel.WriteMusicInfo, Mode=TwoWay}" />
+                <TextBlock Text="{x:Bind loc:Strings.Current.SettingsFileDates}" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,8,0,0" />
+                <CheckBox Content="{x:Bind loc:Strings.Current.MetaCreationDate}" IsChecked="{x:Bind ViewModel.SetCreationDate, Mode=TwoWay}" />
+                <CheckBox Content="{x:Bind loc:Strings.Current.MetaModifiedDate}" IsChecked="{x:Bind ViewModel.SetModifiedDate, Mode=TwoWay}" />
+            </StackPanel>
+
             <!-- Interfaccia: sempre visibile, in tutte e due le modalità -->
             <StackPanel Spacing="10">
                 <TextBlock Text="{x:Bind loc:Strings.Current.SettingsInterface}" Style="{StaticResource BodyStrongTextBlockStyle}" />
