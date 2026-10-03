@@ -1,0 +1,63 @@
+using System.Text.Json;
+using Renamr.Services.Providers;
+
+namespace Renamr.Services.Pipeline;
+
+/// <summary>
+/// Diario append-only delle ridenominazioni effettive (JSON Lines). Ogni riga è scritta e forzata su disco
+/// <i>subito dopo</i> lo spostamento: anche dopo un crash si sa esattamente cosa è stato fatto e si può annullare.
+/// </summary>
+public sealed class RenameJournal(IAppPaths paths) : IDisposable
+{
+    private readonly Lock _gate = new();
+    private StreamWriter? _writer;
+
+    public string? CurrentFile { get; private set; }
+
+    public void BeginSession(string rootFolder)
+    {
+        lock (_gate)
+        {
+            _writer?.Dispose();
+            Directory.CreateDirectory(paths.JournalDirectory);
+            CurrentFile = Path.Combine(paths.JournalDirectory, $"{DateTime.Now:yyyyMMdd-HHmmss}.jsonl");
+            _writer = new StreamWriter(new FileStream(CurrentFile, FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
+            Write(new JournalEntry("session", rootFolder, null, DateTimeOffset.Now));
+        }
+    }
+
+    public void RecordMove(string source, string target)
+    {
+        lock (_gate)
+        {
+            Write(new JournalEntry("move", source, target, DateTimeOffset.Now));
+        }
+    }
+
+    public static IReadOnlyList<JournalEntry> Read(string journalFile) =>
+        File.ReadLines(journalFile)
+            .Where(l => l.Length > 0)
+            .Select(l => JsonSerializer.Deserialize<JournalEntry>(l)!)
+            .ToList();
+
+    private void Write(JournalEntry entry)
+    {
+        if (_writer is null)
+        {
+            return;
+        }
+        _writer.WriteLine(JsonSerializer.Serialize(entry));
+        ((FileStream)_writer.BaseStream).Flush(flushToDisk: true);
+    }
+
+    public void Dispose()
+    {
+        lock (_gate)
+        {
+            _writer?.Dispose();
+            _writer = null;
+        }
+    }
+}
+
+public sealed record JournalEntry(string Kind, string Source, string? Target, DateTimeOffset At);

@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Shell WinUI 3 (Windows App SDK). Contiene SOLO Views e servizi legati alla piattaforma
+    (selettore cartelle, DPAPI, Esplora File). La logica sta in Renamr.Presentation / Services / Core.
+    Build: Visual Studio 2026 (workload "Sviluppo di app WinUI") oppure
+      dotnet build src/Renamr.App -c Release -p:Platform=x64
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <RootNamespace>Renamr.App</RootNamespace>
+    <AssemblyName>Renamr</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+
+    <!-- App non pacchettizzata, Windows App SDK incluso: basta copiare la cartella (o fare publish) e avviare Renamr.exe. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnableMsixTooling>true</EnableMsixTooling>
+
+    <!-- Il Toolkit MVVM su WinRT richiede proprietà partial (AOT-friendly): C# 14 con .NET 10. -->
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Renamr.Core\Renamr.Core.csproj" />
+    <ProjectReference Include="..\Renamr.Services\Renamr.Services.csproj" />
+    <ProjectReference Include="..\Renamr.Presentation\Renamr.Presentation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Chromaprint fpcalc.exe (https://acoustid.org/chromaprint) va copiato in Tools\ per il riconoscimento acustico. -->
+    <None Include="Tools\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

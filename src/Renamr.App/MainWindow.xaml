@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Renamr.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:Renamr.Presentation.ViewModels"
+    xmlns:ui="using:Renamr.App.Helpers"
+    mc:Ignorable="d"
+    Title="Renamr">
+
+    <!-- Materiale Mica: lo sfondo prende la tinta del desktop, in chiaro e in scuro. -->
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid"
+          AllowDrop="True"
+          DragOver="Root_DragOver"
+          DragLeave="Root_DragLeave"
+          Drop="Root_Drop">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />    <!-- barra del titolo personalizzata -->
+            <RowDefinition Height="*" />     <!-- contenuto: drop-zone oppure diff view -->
+            <RowDefinition Height="Auto" />  <!-- pannello errori/avvisi -->
+            <RowDefinition Height="Auto" />  <!-- barra azione / progresso -->
+        </Grid.RowDefinitions>
+
+        <!-- ═══ Barra del titolo (zona di trascinamento della finestra) ═══ -->
+        <Grid x:Name="AppTitleBar" Padding="16,0,140,0" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <FontIcon Glyph="&#xE8AC;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+            <TextBlock Grid.Column="1" Text="Renamr" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBlock Grid.Column="2"
+                       Text="{x:Bind ViewModel.RootFolder, Mode=OneWay}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+        </Grid>
+
+        <!-- ═══ FASE 1 · Selezione & Drag-and-Drop ═══ -->
+        <Grid x:Name="DropZone"
+              Grid.Row="1"
+              Margin="48,24,48,48"
+              Visibility="{x:Bind ViewModel.IsSelectPhase, Mode=OneWay}">
+            <Rectangle x:Name="DropZoneOutline"
+                       RadiusX="12" RadiusY="12"
+                       StrokeThickness="2"
+                       StrokeDashArray="5,4"
+                       Stroke="{ThemeResource ControlStrongStrokeColorDefaultBrush}"
+                       Fill="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="440">
+                <FontIcon Glyph="&#xE8B7;" FontSize="56" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                <TextBlock x:Name="DropZoneTitle"
+                           Text="Trascina qui la cartella della tua libreria"
+                           Style="{StaticResource SubtitleTextBlockStyle}"
+                           TextAlignment="Center" HorizontalAlignment="Center" />
+                <TextBlock Text="Film, serie TV, anime e musica vengono riconosciuti automaticamente. Nulla viene modificato finché non confermi."
+                           Style="{StaticResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextAlignment="Center" TextWrapping="Wrap" />
+                <Button Margin="0,12,0,0"
+                        HorizontalAlignment="Center"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Command="{x:Bind ViewModel.PickFolderCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE838;" FontSize="16" />
+                        <TextBlock Text="Scegli cartella…" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- ═══ FASE 2 · Anteprima intelligente (Diff View) ═══ -->
+        <Grid Grid.Row="1"
+              Padding="24,8,24,0"
+              RowSpacing="12"
+              Visibility="{x:Bind ViewModel.IsPreviewVisible, Mode=OneWay}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Riepilogo a pillole: niente toolbar, solo informazione -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Border Style="{StaticResource StatusBadgeStyle}" Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}">
+                    <TextBlock Style="{StaticResource StatusBadgeTextStyle}" Foreground="{ThemeResource SystemFillColorSuccessBrush}">
+                        <Run Text="Pronti" /> <Run Text="{x:Bind ViewModel.ReadyCount, Mode=OneWay}" />
+                    </TextBlock>
+                </Border>
+                <Border Style="{StaticResource StatusBadgeStyle}" Background="{ThemeResource SystemFillColorCautionBackgroundBrush}">
+                    <TextBlock Style="{StaticResource StatusBadgeTextStyle}" Foreground="{ThemeResource SystemFillColorCautionBrush}">
+                        <Run Text="Bassa confidenza" /> <Run Text="{x:Bind ViewModel.LowConfidenceCount, Mode=OneWay}" />
+                    </TextBlock>
+                </Border>
+                <Border Style="{StaticResource StatusBadgeStyle}" Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}">
+                    <TextBlock Style="{StaticResource StatusBadgeTextStyle}" Foreground="{ThemeResource SystemFillColorCriticalBrush}">
+                        <Run Text="Errori" /> <Run Text="{x:Bind ViewModel.ErrorCount, Mode=OneWay}" />
+                    </TextBlock>
+                </Border>
+            </StackPanel>
+
+            <!-- Esito dell'esecuzione, con "Annulla" a portata di mano -->
+            <InfoBar Grid.Row="1"
+                     IsOpen="{x:Bind ViewModel.IsSummaryOpen, Mode=TwoWay}"
+                     Title="{x:Bind ViewModel.SummaryTitle, Mode=OneWay}"
+                     Message="{x:Bind ViewModel.SummaryMessage, Mode=OneWay}"
+                     Severity="{x:Bind ui:Ui.Severity(ViewModel.SummaryHasErrors), Mode=OneWay}">
+                <InfoBar.ActionButton>
+                    <Button Content="Annulla ridenominazione"
+                            Command="{x:Bind ViewModel.UndoCommand}"
+                            Visibility="{x:Bind ViewModel.CanUndo, Mode=OneWay}" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+
+            <!-- Intestazione colonne -->
+            <Grid Grid.Row="2" Padding="16,0" ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Stato" Style="{StaticResource ColumnHeaderTextStyle}" />
+                <TextBlock Grid.Column="1" Text="Nome originale" Style="{StaticResource ColumnHeaderTextStyle}" />
+                <TextBlock Grid.Column="3" Text="Nuovo nome proposto" Style="{StaticResource ColumnHeaderTextStyle}" />
+            </Grid>
+
+            <!-- Tabella a due colonne: Originale ➔ Proposto. ListView virtualizzata: regge decine di migliaia di righe. -->
+            <ListView Grid.Row="3"
+                      ItemsSource="{x:Bind ViewModel.Items}"
+                      SelectionMode="None"
+                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                      BorderThickness="1"
+                      CornerRadius="8"
+                      Padding="0,4">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FileItemViewModel">
+                        <Grid Padding="4,10" ColumnSpacing="12" Opacity="{x:Bind ui:Ui.RowOpacity(Status), Mode=OneWay}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Style="{StaticResource StatusBadgeStyle}"
+                                    Background="{x:Bind ui:Ui.StatusBackground(Status), Mode=OneWay}">
+                                <TextBlock Text="{x:Bind StatusText, Mode=OneWay}"
+                                           Style="{StaticResource StatusBadgeTextStyle}"
+                                           Foreground="{x:Bind ui:Ui.StatusForeground(Status), Mode=OneWay}" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind OriginalName, Mode=OneWay}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTipService.ToolTip="{x:Bind OriginalName, Mode=OneWay}" />
+                                <TextBlock Text="{x:Bind RelativeFolder, Mode=OneWay}"
+                                           Visibility="{x:Bind ui:Ui.HasText(RelativeFolder), Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+
+                            <FontIcon Grid.Column="2" Glyph="&#xE72A;" FontSize="12"
+                                      Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+                            <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ProposedName, Mode=OneWay}"
+                                           FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTipService.ToolTip="{x:Bind ProposedName, Mode=OneWay}" />
+                                <TextBlock Text="{x:Bind MatchSummary, Mode=OneWay}"
+                                           Visibility="{x:Bind ui:Ui.HasText(MatchSummary), Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind Detail, Mode=OneWay}"
+                                           Visibility="{x:Bind ui:Ui.HasText(Detail), Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{x:Bind ui:Ui.StatusForeground(Status), Mode=OneWay}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+
+        <!-- ═══ Pannello collassabile Errori/Avvisi ═══ -->
+        <Expander Grid.Row="2"
+                  Margin="24,12,24,0"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Stretch"
+                  IsExpanded="{x:Bind ViewModel.Issues.IsExpanded, Mode=TwoWay}"
+                  Visibility="{x:Bind ViewModel.Issues.HasIssues, Mode=OneWay}">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <FontIcon Glyph="&#xE7BA;" FontSize="16" Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                    <TextBlock Text="Errori e avvisi" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Bind ViewModel.Issues.Header, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Expander.Header>
+            <ListView ItemsSource="{x:Bind ViewModel.Issues.Issues}"
+                      MaxHeight="220"
+                      SelectionMode="None"
+                      IsItemClickEnabled="True"
+                      ItemClick="Issue_ItemClick">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:IssueItemViewModel">
+                        <Grid Padding="0,6" ColumnSpacing="12" ToolTipService.ToolTip="{x:Bind Detail}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="56" />
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="3*" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Glyph="{x:Bind ui:Ui.IssueGlyph(IsWarning)}" FontSize="14" Foreground="{x:Bind ui:Ui.IssueForeground(IsWarning)}" />
+                            <TextBlock Grid.Column="1" Text="{x:Bind Code}" FontFamily="Cascadia Mono, Consolas" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                            <TextBlock Grid.Column="2" Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="3" Text="{x:Bind Message}" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Expander>
+
+        <!-- ═══ FASE 3 · Azione unica + monitoraggio in tempo reale ═══ -->
+        <Grid Grid.Row="3"
+              Margin="0,12,0,0"
+              Padding="24,14"
+              ColumnSpacing="16"
+              Background="{ThemeResource LayerFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="0,1,0,0"
+              Visibility="{x:Bind ViewModel.IsPreviewVisible, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Opzioni (a riposo) -->
+            <StackPanel Orientation="Horizontal" Spacing="24" VerticalAlignment="Center"
+                        Visibility="{x:Bind ui:Ui.Collapsed(ViewModel.IsBusy), Mode=OneWay}">
+                <ToggleSwitch IsOn="{x:Bind ViewModel.IsDryRun, Mode=TwoWay}"
+                              OnContent="Simulazione (Dry Run)"
+                              OffContent="Simulazione (Dry Run)"
+                              ToolTipService.ToolTip="Calcola e verifica tutto senza modificare alcun file" />
+                <CheckBox IsChecked="{x:Bind ViewModel.IncludeLowConfidence, Mode=TwoWay}">
+                    <TextBlock>
+                        <Run Text="Includi bassa confidenza" />
+                        <Run Text="(" /><Run Text="{x:Bind ViewModel.LowConfidenceCount, Mode=OneWay}" /><Run Text=")" />
+                    </TextBlock>
+                </CheckBox>
+            </StackPanel>
+
+            <!-- Avanzamento (durante analisi/esecuzione) -->
+            <Grid VerticalAlignment="Center" RowSpacing="6" ColumnSpacing="12"
+                  Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ProgressRing Grid.RowSpan="2" Width="28" Height="28"
+                              IsIndeterminate="{x:Bind ui:Ui.IsZero(ViewModel.Total), Mode=OneWay}"
+                              Value="{x:Bind ViewModel.ProgressValue, Mode=OneWay}" />
+                <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis">
+                    <Run Text="{x:Bind ViewModel.ProgressPhase, Mode=OneWay}" FontWeight="SemiBold" />
+                    <Run Text="  " />
+                    <Run Text="{x:Bind ViewModel.CurrentFile, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </TextBlock>
+                <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" FontFamily="Cascadia Mono, Consolas" />
+                <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                             Maximum="100"
+                             Value="{x:Bind ViewModel.ProgressValue, Mode=OneWay}"
+                             IsIndeterminate="{x:Bind ui:Ui.IsZero(ViewModel.Total), Mode=OneWay}" />
+            </Grid>
+
+            <!-- Pulsanti: uno primario, il resto discreto -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Command="{x:Bind ViewModel.CancelCommand}"
+                        Content="Annulla"
+                        Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+                <Button Click="Settings_Click"
+                        ToolTipService.ToolTip="Impostazioni"
+                        Visibility="{x:Bind ui:Ui.Collapsed(ViewModel.IsBusy), Mode=OneWay}">
+                    <FontIcon Glyph="&#xE713;" FontSize="16" />
+                </Button>
+                <Button Content="Cambia cartella"
+                        Command="{x:Bind ViewModel.ResetCommand}"
+                        Visibility="{x:Bind ui:Ui.Collapsed(ViewModel.IsBusy), Mode=OneWay}" />
+                <Button Style="{StaticResource AccentButtonStyle}"
+                        Command="{x:Bind ViewModel.RunCommand}"
+                        MinWidth="220"
+                        Visibility="{x:Bind ui:Ui.Collapsed(ViewModel.IsBusy), Mode=OneWay}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE8AC;" FontSize="16" />
+                        <TextBlock Text="{x:Bind ViewModel.PrimaryActionText, Mode=OneWay}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
