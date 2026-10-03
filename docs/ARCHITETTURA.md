@@ -206,3 +206,13 @@ In alto nella finestra un selettore sceglie tra **Film e serie** (tutto quanto d
 - Sorgenti in `assets/brand`: `renamr-logo.svg` (navy, tema chiaro), `renamr-logo-dark.svg` (bianco, tema scuro), `renamr-icon.svg` (simbolo quadrato "R" con cursore) e `renamr.ico` multi-risoluzione; `make_svg.py` e `make_png.py` rigenerano tutto. Colori: navy `#0F1B3D`, blu accento `#2F6BFF` (anche colore d'accento dell'app Linux).
 - Le due app usano PNG ricavati da queste sorgenti (`Assets/`): logo grande nella schermata iniziale, solo scritta nella barra del titolo, scelti per tema (`ThemeDictionaries` in WinUI, `Resources.ThemeDictionaries` in Avalonia). `renamr.ico` è l'icona di Renamr.exe e della finestra Windows; `renamr-icon.png` quella della finestra Linux.
 - Layout: in alto logo e versione, cartella aperta a destra; sotto, le due modalità e l'unico pulsante Impostazioni, sempre visibile; poi il contenuto e la barra azione.
+
+## 15. README e release
+
+- Il `README.md` è in inglese (scelta di Daniele) con gli screenshot in `docs/screenshots`, presi dall'app Linux con
+  l'interfaccia in inglese su una libreria dimostrativa. Questo documento resta in italiano.
+- `.github/workflows/release.yml` compila e testa su runner Windows e Linux a ogni pull request e push su `main`
+  (è anche la prima compilazione automatica di `Renamr.App`). Un tag `vX.Y.Z` uguale a `<Version>` in
+  `Directory.Build.props` pubblica una release con `Renamr-X.Y.Z-win-x64.zip`, `-win-arm64.zip`, `-linux-x64.tar.gz` e
+  `-linux-arm64.tar.gz`; GitHub aggiunge da solo gli archivi del codice sorgente. Un tag diverso dalla versione ferma il workflow.
+- `fpcalc` non è incluso nei pacchetti: su Windows va copiato in `Tools\`, su Linux arriva da `libchromaprint-tools`.
