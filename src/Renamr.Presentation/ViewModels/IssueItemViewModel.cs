@@ -8,6 +8,9 @@ public sealed record IssueItemViewModel(string FilePath, RenamrError Error, stri
     public string FileName => Path.GetFileName(FilePath);
     public string Code => $"E{(int)Error.Code}";
     public string Message => Error.Message;
+
+    /// <summary>Messaggio con il dettaglio tecnico, così la causa si legge senza passare il mouse.</summary>
+    public string MessageWithDetail => string.IsNullOrWhiteSpace(Error.Detail) ? Error.Message : $"{Error.Message} ({Error.Detail})";
     public string? Detail => Error.Detail;
     public bool IsWarning => Error.IsWarning;
 }

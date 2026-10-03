@@ -92,7 +92,9 @@ tests/Renamr.Tests/          # 77 test xUnit + file multimediali minuscoli gener
 
 - **Data a mezzogiorno UTC.** `1999-03-31T00:00Z` in Esplora File a New York diventerebbe il 30 marzo; alle 12:00 UTC il giorno è lo stesso in ogni fuso.
 - **"Supporto creato" in Esplora File.** Per MP4/MOV la colonna legge `moov/mvhd.creation_time`, per MKV `Segment/Info/DateUTC`: TagLib non li scrive, quindi `Mp4HeaderDatePatcher` e `MatroskaDatePatcher` li aggiornano in place (4–8 byte, il file non cambia dimensione). Se un MKV non ha `DateUTC` non lo si inserisce (servirebbe riscrivere l'header): resta il tag `DATE_RELEASED`.
-- **File oltre 4 GB.** Niente riscrittura dei tag (troppo rischiosa e lenta): solo patch dell'intestazione e date del file system, con un avviso.
+- **File oltre 4 GB.** Niente riscrittura dei tag (troppo rischiosa e lenta): solo patch dell'intestazione e date del file system. Se la data nell'intestazione è stata aggiornata non c'è avviso; altrimenti un avviso E303 spiega cosa manca.
+- **Metadati interni opzionali.** La casella "Scrivi metadati interni" (ricordata nelle impostazioni, `Output.WriteEmbeddedMetadata`) spegne la scrittura dei tag e dell'intestazione: restano nome e date del file system.
+- **File.Replace non supportato** (alcuni dischi di rete, exFAT/FAT32): l'originale viene spostato da parte, la copia messa al suo posto, il vecchio cancellato solo alla fine.
 - **Data per contenitore.** ID3v2.4 `TDRC`+`TDRL`, Vorbis `DATE`+`ORIGINALDATE`, MP4 `©day`, Matroska `DATE_RELEASED`, RIFF `ICRD`, ASF `WM/OriginalReleaseTime`.
 - **Path traversal.** Confronto con la radice terminata dal separatore (`D:\Media\` non contiene `D:\MediaPrivati`), rifiuto di ADS (`file:stream`), percorsi di dispositivo, reparse point lungo il percorso; i valori dai database non possono introdurre `/` e un segmento `..` diventa `_`.
 - **fpcalc invece di AcoustID.NET.** AcoustID.NET richiede un decoder audio in-process (NAudio/Bass) e non è più mantenuto; `fpcalc.exe` è il binario ufficiale Chromaprint, decodifica tutto via FFmpeg e gira in un processo separato con timeout. Il lookup AcoustID restituisce già gli ID MusicBrainz e le date di release.
@@ -103,7 +105,7 @@ tests/Renamr.Tests/          # 77 test xUnit + file multimediali minuscoli gener
 ## 6. Cosa è stato verificato e cosa no
 
 - `Renamr.Core`, `Renamr.Services`, `Renamr.Presentation` e i test **compilano con .NET 10 senza warning** (analizzatori `latest-recommended`, warning trattati come errori).
-- **111 test xUnit verdi**: parser, template, similarità e cascata dei provider, boundary check (traversal, prefissi, symlink), lock, ReadOnly, move senza sovrascrittura, date, scrittura tag reale su MP3/FLAC/MP4/MKV, pipeline completa (rinomina + tag + date + sottotitoli, dry run, file bloccato che non ferma la coda, conflitti, cartelle da template, annulla), ViewModel su un "thread UI" simulato, impostazioni cifrate.
+- **114 test xUnit verdi**: parser, template, similarità e cascata dei provider, boundary check (traversal, prefissi, symlink), lock, ReadOnly, move senza sovrascrittura, date, scrittura tag reale su MP3/FLAC/MP4/MKV, pipeline completa (rinomina + tag + date + sottotitoli, dry run, file bloccato che non ferma la coda, conflitti, cartelle da template, annulla), ViewModel su un "thread UI" simulato, impostazioni cifrate.
 - Le date scritte sono state controllate anche con **ffprobe**: `creation_time=1999-03-31T12:00:00Z` su MP4/M4A/MKV, `date=1999-03-31` su MP3.
 - I test girano su Linux: `SetCreationTimeUtc` lì non è verificabile (il test lo controlla solo su Windows) e i codici HRESULT Win32 sono coperti da test sul classificatore.
 - **Non compilato qui: `Renamr.App` (WinUI 3)**. Il compilatore XAML di Windows App SDK gira solo su Windows. I file XAML sono XML valido e i ViewModel a cui si legano sono compilati e testati, ma la prima build su Windows può richiedere piccoli ritocchi.
@@ -140,7 +142,7 @@ La lingua si sceglie in Impostazioni ("it-IT"), dal selettore in basso o dal men
 ## 9. Scelte rapide e versione
 
 - **Tasto destro sulla lista**: formato del nome (preset in `TemplatePresets`, con anteprima sulla riga nel tooltip), lingua dei titoli, copia del nuovo nome, Esplora File. Un formato scelto diventa il template del tipo e i nomi si ricalcolano in locale (`RenamePlanner.Rerender`), senza nuove ricerche online.
-- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.2.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
+- **Versione**: `<Version>` in `Directory.Build.props`, mostrata come "Renamr v1.3.0" nella barra del titolo (tooltip con il commit). Si aumenta a ogni pull request.
 
 ## 10. Estendere
 

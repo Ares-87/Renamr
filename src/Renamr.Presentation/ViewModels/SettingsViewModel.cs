@@ -116,6 +116,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 AniDbClientName = Clean(AniDbClientName),
                 AniDbClientVersion = current.Keys.AniDbClientVersion,
             },
+            Output = current.Output,
             VideoExtensions = current.VideoExtensions,
             AudioExtensions = current.AudioExtensions,
             CompanionExtensions = current.CompanionExtensions,
