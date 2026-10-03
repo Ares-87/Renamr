@@ -15,6 +15,8 @@ public static class Ui
 
     public static bool IsZero(int value) => value == 0;
 
+    public static bool Not(bool value) => !value;
+
     public static InfoBarSeverity Severity(bool hasErrors) => hasErrors ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
 
     public static Visibility HasText(string? value) => string.IsNullOrEmpty(value) ? Visibility.Collapsed : Visibility.Visible;

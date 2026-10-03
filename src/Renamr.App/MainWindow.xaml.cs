@@ -39,6 +39,9 @@ public sealed partial class MainWindow : Window
             presenter.PreferredMinimumWidth = 760;
             presenter.PreferredMinimumHeight = 520;
         }
+
+        // Riparte dall'ultima modalità usata.
+        ModeBar.SelectedItem = viewModel.IsBatchMode ? BatchModeItem : MediaModeItem;
     }
 
     public MainViewModel ViewModel { get; }
@@ -87,7 +90,22 @@ public sealed partial class MainWindow : Window
         var resources = Application.Current.Resources;
         DropZoneOutline.Stroke = (Microsoft.UI.Xaml.Media.Brush)resources[active ? "AccentFillColorDefaultBrush" : "ControlStrongStrokeColorDefaultBrush"];
         DropZoneOutline.Fill = (Microsoft.UI.Xaml.Media.Brush)resources[active ? "SubtleFillColorSecondaryBrush" : "CardBackgroundFillColorDefaultBrush"];
-        DropZoneTitle.Text = active ? "Rilascia per analizzare" : "Trascina qui la cartella della tua libreria";
+        DropZoneTitle.Text = active ? "Rilascia per analizzare" : ViewModel.DropZoneTitle;
+    }
+
+    // ---- Modalità e regole di "Rinomina file" -----------------------------------------------------------------
+
+    private void ModeBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args) =>
+        ViewModel.ModeIndex = sender.SelectedItem == BatchModeItem ? 1 : 0;
+
+    private void AddRule_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new MenuFlyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Top };
+        foreach (var kind in BatchRenameViewModel.RuleKinds)
+        {
+            menu.Items.Add(new MenuFlyoutItem { Text = kind.Label, Command = ViewModel.Batch.AddRuleCommand, CommandParameter = kind.Key });
+        }
+        menu.ShowAt(AddRuleButton);
     }
 
     // ---- Pannelli ---------------------------------------------------------------------------------------------
@@ -150,6 +168,16 @@ public sealed partial class MainWindow : Window
     {
         args.Handled = true;
         var menu = new MenuFlyout();
+        if (ViewModel.IsBatchMode)
+        {
+            // Qui i nomi vengono dalle regole: niente formati né lingua, solo le azioni sul file.
+            if (item is not null)
+            {
+                AddFileActions(menu, item);
+                ShowMenu(menu, target, args);
+            }
+            return;
+        }
 
         MediaKind[] kinds = item?.TemplateKind is { } kind ? [kind] : [.. KindNames.Keys];
         foreach (var k in kinds)
@@ -174,10 +202,18 @@ public sealed partial class MainWindow : Window
         var custom = new MenuFlyoutItem { Text = "Personalizza formati…", Icon = new FontIcon { Glyph = "\uE713" } };
         custom.Click += Settings_Click;
         menu.Items.Add(custom);
-
         if (item is not null)
         {
             menu.Items.Add(new MenuFlyoutSeparator());
+        }
+        AddFileActions(menu, item);
+        ShowMenu(menu, target, args);
+    }
+
+    private static void AddFileActions(MenuFlyout menu, FileItemViewModel? item)
+    {
+        if (item is not null)
+        {
             if (item.Entry.TargetPath is not null)
             {
                 var copy = new MenuFlyoutItem { Text = "Copia nuovo nome", Icon = new FontIcon { Glyph = "\uE8C8" } };
@@ -188,7 +224,10 @@ public sealed partial class MainWindow : Window
             reveal.Click += (_, _) => App.Services.GetRequiredService<IShellService>().RevealInExplorer(item.Entry.SourcePath);
             menu.Items.Add(reveal);
         }
+    }
 
+    private static void ShowMenu(MenuFlyout menu, UIElement target, ContextRequestedEventArgs args)
+    {
         if (args.TryGetPosition(target, out var point))
         {
             menu.ShowAt(target, point);
