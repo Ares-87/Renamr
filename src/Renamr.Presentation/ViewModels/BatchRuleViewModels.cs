@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Renamr.Core.BatchRename;
+using Renamr.Core.Localization;
 
 namespace Renamr.Presentation.ViewModels;
 
@@ -19,9 +20,10 @@ public abstract partial class BatchRuleViewModel : ObservableObject
     [ObservableProperty]
     public partial bool Enabled { get; set; } = true;
 
+    private int _index;
+
     /// <summary>"1. Numerazione": il numero dice l'ordine in cui le regole si applicano.</summary>
-    [ObservableProperty]
-    public partial string Header { get; private set; } = string.Empty;
+    public string Header => $"{_index + 1}. {Title}";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(MoveUpCommand))]
@@ -42,9 +44,17 @@ public abstract partial class BatchRuleViewModel : ObservableObject
 
     internal void SetPosition(int index, int count)
     {
-        Header = $"{index + 1}. {Title}";
+        _index = index;
+        OnPropertyChanged(nameof(Header));
         CanMoveUp = index > 0;
         CanMoveDown = index < count - 1;
+    }
+
+    /// <summary>Lingua dell'interfaccia cambiata.</summary>
+    public void RefreshTexts()
+    {
+        OnPropertyChanged(nameof(Header));
+        OnPropertyChanged(nameof(Description));
     }
 
     [RelayCommand(CanExecute = nameof(CanMoveUp))]
@@ -58,7 +68,7 @@ public abstract partial class BatchRuleViewModel : ObservableObject
 
     private void OnAnyPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(Header) or nameof(CanMoveUp) or nameof(CanMoveDown) or "Error" or "HasError"))
+        if (e.PropertyName is not (nameof(Header) or nameof(Description) or nameof(CanMoveUp) or nameof(CanMoveDown) or "Error" or "HasError"))
         {
             OnRuleChanged();
             _owner?.NotifyRulesChanged();
@@ -111,18 +121,18 @@ public sealed partial class NewNameRuleViewModel : BatchRuleViewModel
     [ObservableProperty]
     public partial string Pattern { get; set; } = "{nome}";
 
-    public override string Title => "Nuovo nome";
+    public override string Title => Strings.Current.RuleNewName;
 
-    public override string Description => "Un modello per tutti i file, es. \"Vacanze {n:000}\" o \"{data} {nome}\".";
+    public override string Description => Strings.Current.RuleNewNameDesc;
 
-    public static string TokensHelp { get; } = string.Join(Environment.NewLine, BatchTokens.Help.Select(t => $"{t.Token}  {t.Description}"));
+    public static string TokensHelp => string.Join(Environment.NewLine, BatchTokens.Help.Select(t => $"{t.Token}  {t.Description}"));
 
     public override BatchRule ToRule() => new NewNameRule { Enabled = Enabled, Pattern = Pattern ?? string.Empty };
 }
 
 public sealed partial class NumberingRuleViewModel : BatchRuleViewModel
 {
-    public static IReadOnlyList<string> Positions { get; } = ["All'inizio", "Alla fine", "Al posto del nome"];
+    public static IReadOnlyList<string> Positions => [Strings.Current.PositionStart, Strings.Current.PositionEnd, Strings.Current.PositionReplaceName];
 
     [ObservableProperty]
     public partial int PositionIndex { get; set; } = (int)NumberPosition.End;
@@ -143,9 +153,9 @@ public sealed partial class NumberingRuleViewModel : BatchRuleViewModel
     [ObservableProperty]
     public partial bool RestartInEachFolder { get; set; }
 
-    public override string Title => "Numerazione";
+    public override string Title => Strings.Current.RuleNumbering;
 
-    public override string Description => "Numero progressivo nell'ordine scelto sopra. Cifre 0 = automatiche.";
+    public override string Description => Strings.Current.RuleNumberingDesc;
 
     public override BatchRule ToRule() => new NumberingRule
     {
@@ -179,9 +189,9 @@ public sealed partial class ReplaceTextRuleViewModel : BatchRuleViewModel
 
     public bool HasError => Error is not null;
 
-    public override string Title => "Sostituisci testo";
+    public override string Title => Strings.Current.RuleReplace;
 
-    public override string Description => "Cerca un testo e lo sostituisce (vuoto = lo toglie). Con le espressioni regolari si usano $1, $2…";
+    public override string Description => Strings.Current.RuleReplaceDesc;
 
     public override BatchRule ToRule() => new ReplaceTextRule
     {
@@ -197,7 +207,7 @@ public sealed partial class ReplaceTextRuleViewModel : BatchRuleViewModel
 
 public sealed partial class InsertTextRuleViewModel : BatchRuleViewModel
 {
-    public static IReadOnlyList<string> Positions { get; } = ["All'inizio", "Alla fine", "Dopo il carattere…"];
+    public static IReadOnlyList<string> Positions => [Strings.Current.PositionStart, Strings.Current.PositionEnd, Strings.Current.PositionAfterChars];
 
     [ObservableProperty]
     public partial string Text { get; set; } = string.Empty;
@@ -211,9 +221,9 @@ public sealed partial class InsertTextRuleViewModel : BatchRuleViewModel
 
     public bool IsAtIndex => PositionIndex == (int)InsertPosition.AfterCharacters;
 
-    public override string Title => "Aggiungi testo";
+    public override string Title => Strings.Current.RuleInsert;
 
-    public override string Description => "Aggiunge un testo, anche con segnaposto come {data} o {cartella}.";
+    public override string Description => Strings.Current.RuleInsertDesc;
 
     public override BatchRule ToRule() => new InsertTextRule
     {
@@ -226,7 +236,7 @@ public sealed partial class InsertTextRuleViewModel : BatchRuleViewModel
 
 public sealed partial class RemoveCharactersRuleViewModel : BatchRuleViewModel
 {
-    public static IReadOnlyList<string> Modes { get; } = ["Primi caratteri", "Ultimi caratteri", "Da una posizione"];
+    public static IReadOnlyList<string> Modes => [Strings.Current.RemoveFirst, Strings.Current.RemoveLast, Strings.Current.RemoveRange];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRange))]
@@ -240,9 +250,9 @@ public sealed partial class RemoveCharactersRuleViewModel : BatchRuleViewModel
 
     public bool IsRange => ModeIndex == (int)RemoveMode.Range;
 
-    public override string Title => "Rimuovi caratteri";
+    public override string Title => Strings.Current.RuleRemoveChars;
 
-    public override string Description => "Toglie un certo numero di caratteri dall'inizio, dalla fine o da una posizione.";
+    public override string Description => Strings.Current.RuleRemoveCharsDesc;
 
     public override BatchRule ToRule() => new RemoveCharactersRule
     {
@@ -255,14 +265,14 @@ public sealed partial class RemoveCharactersRuleViewModel : BatchRuleViewModel
 
 public sealed partial class ChangeCaseRuleViewModel : BatchRuleViewModel
 {
-    public static IReadOnlyList<string> Modes { get; } = ["tutto minuscolo", "TUTTO MAIUSCOLO", "Ogni Parola Maiuscola", "Solo la prima maiuscola"];
+    public static IReadOnlyList<string> Modes => [Strings.Current.CaseLower, Strings.Current.CaseUpper, Strings.Current.CaseTitle, Strings.Current.CaseSentence];
 
     [ObservableProperty]
     public partial int ModeIndex { get; set; } = (int)CaseMode.TitleCase;
 
-    public override string Title => "Maiuscole e minuscole";
+    public override string Title => Strings.Current.RuleCase;
 
-    public override string Description => "Cambia maiuscole e minuscole del nome (non dell'estensione).";
+    public override string Description => Strings.Current.RuleCaseDesc;
 
     public override BatchRule ToRule() => new ChangeCaseRule { Enabled = Enabled, Mode = (CaseMode)Math.Clamp(ModeIndex, 0, 3) };
 }
@@ -281,9 +291,9 @@ public sealed partial class CleanupRuleViewModel : BatchRuleViewModel
     [ObservableProperty]
     public partial bool RemoveDigits { get; set; }
 
-    public override string Title => "Pulisci nome";
+    public override string Title => Strings.Current.RuleCleanup;
 
-    public override string Description => "Toglie separatori, parentesi, accenti e spazi doppi.";
+    public override string Description => Strings.Current.RuleCleanupDesc;
 
     public override BatchRule ToRule() => new CleanupRule
     {
@@ -297,7 +307,7 @@ public sealed partial class CleanupRuleViewModel : BatchRuleViewModel
 
 public sealed partial class ExtensionRuleViewModel : BatchRuleViewModel
 {
-    public static IReadOnlyList<string> Modes { get; } = ["minuscola (.jpg)", "MAIUSCOLA (.JPG)", "Sostituisci con…"];
+    public static IReadOnlyList<string> Modes => [Strings.Current.ExtensionLower, Strings.Current.ExtensionUpper, Strings.Current.ExtensionReplace];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReplace))]
@@ -308,9 +318,9 @@ public sealed partial class ExtensionRuleViewModel : BatchRuleViewModel
 
     public bool IsReplace => ModeIndex == (int)ExtensionMode.Replace;
 
-    public override string Title => "Estensione";
+    public override string Title => Strings.Current.RuleExtension;
 
-    public override string Description => "Cambia solo l'estensione nel nome: il contenuto del file non viene convertito.";
+    public override string Description => Strings.Current.RuleExtensionDesc;
 
     public override BatchRule ToRule() => new ExtensionRule
     {

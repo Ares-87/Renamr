@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Renamr.App.Views;
+using Renamr.Core.Localization;
 using Renamr.Core.Models;
 using Renamr.Core.Templating;
 using Renamr.Presentation.Services;
@@ -40,9 +41,17 @@ public sealed partial class MainWindow : Window
             presenter.PreferredMinimumHeight = 520;
         }
 
-        // Riparte dall'ultima modalità usata.
+        // Riparte dall'ultima modalità usata. I clic si ascoltano solo a finestra caricata: un selettore appena creato può
+        // scegliere da solo la prima voce, e ricreando la finestra (cambio di lingua) rimetterebbe "Film, Serie e Musica".
         ModeBar.SelectedItem = viewModel.IsBatchMode ? BatchModeItem : MediaModeItem;
+        RootGrid.Loaded += (_, _) =>
+        {
+            ModeBar.SelectedItem = ViewModel.IsBatchMode ? BatchModeItem : MediaModeItem;
+            _modeBarReady = true;
+        };
     }
+
+    private bool _modeBarReady;
 
     public MainViewModel ViewModel { get; }
 
@@ -59,7 +68,7 @@ public sealed partial class MainWindow : Window
             return;
         }
         e.AcceptedOperation = DataPackageOperation.Link;
-        e.DragUIOverride.Caption = "Apri questa cartella in Renamr";
+        e.DragUIOverride.Caption = Strings.Current.DropCaption;
         e.DragUIOverride.IsGlyphVisible = false;
         SetDropHighlight(true);
     }
@@ -90,13 +99,18 @@ public sealed partial class MainWindow : Window
         var resources = Application.Current.Resources;
         DropZoneOutline.Stroke = (Microsoft.UI.Xaml.Media.Brush)resources[active ? "AccentFillColorDefaultBrush" : "ControlStrongStrokeColorDefaultBrush"];
         DropZoneOutline.Fill = (Microsoft.UI.Xaml.Media.Brush)resources[active ? "SubtleFillColorSecondaryBrush" : "CardBackgroundFillColorDefaultBrush"];
-        DropZoneTitle.Text = active ? "Rilascia per analizzare" : ViewModel.DropZoneTitle;
+        DropZoneTitle.Text = active ? Strings.Current.DropRelease : ViewModel.DropZoneTitle;
     }
 
     // ---- Modalità e regole di "Rinomina file" -----------------------------------------------------------------
 
-    private void ModeBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args) =>
-        ViewModel.ModeIndex = sender.SelectedItem == BatchModeItem ? 1 : 0;
+    private void ModeBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (_modeBarReady && sender.SelectedItem is not null)
+        {
+            ViewModel.ModeIndex = sender.SelectedItem == BatchModeItem ? 1 : 0;
+        }
+    }
 
     private void AddRule_Click(object sender, RoutedEventArgs e)
     {
@@ -118,7 +132,9 @@ public sealed partial class MainWindow : Window
     private async Task OpenSettingsAsync()
     {
         var settings = App.Services.GetRequiredService<SettingsViewModel>();
+        settings.IsMediaMode = ViewModel.IsMediaMode; // in "Rinomina file" niente chiavi API né formati dei film
         var previousLanguage = ViewModel.CurrentLanguage;
+        var previousUiLanguage = Strings.Current.Language;
         var dialog = new SettingsDialog(settings)
         {
             XamlRoot = Content.XamlRoot,
@@ -132,18 +148,28 @@ public sealed partial class MainWindow : Window
         {
             await saving;
         }
+        if (Strings.Current.Language != previousUiLanguage)
+        {
+            // Nuova lingua dell'interfaccia: la finestra si ricrea con i testi nuovi (stato e cartella restano nel ViewModel).
+            ((App)Application.Current).ReplaceMainWindow(this);
+        }
         await ViewModel.SettingsSavedCommand.ExecuteAsync(previousLanguage);
     }
 
     // ---- Menu contestuale della lista: formato del nome e lingua al volo -------------------------------------
 
-    private static readonly Dictionary<MediaKind, string> KindNames = new()
+    private static readonly MediaKind[] Kinds = [MediaKind.Movie, MediaKind.Episode, MediaKind.Anime, MediaKind.Music];
+
+    private static string KindName(MediaKind kind) => kind switch
     {
-        [MediaKind.Movie] = "film",
-        [MediaKind.Episode] = "serie TV",
-        [MediaKind.Anime] = "anime",
-        [MediaKind.Music] = "musica",
+        MediaKind.Movie => Strings.Current.KindMovie,
+        MediaKind.Episode => Strings.Current.KindEpisode,
+        MediaKind.Anime => Strings.Current.KindAnime,
+        _ => Strings.Current.KindMusic,
     };
+
+    /// <summary>Prima di chiudere la finestra vecchia (cambio di lingua): smette di seguire il ViewModel condiviso.</summary>
+    public void StopTracking() => Bindings.StopTracking();
 
     private void Row_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
     {
@@ -179,13 +205,13 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        MediaKind[] kinds = item?.TemplateKind is { } kind ? [kind] : [.. KindNames.Keys];
+        MediaKind[] kinds = item?.TemplateKind is { } kind ? [kind] : Kinds;
         foreach (var k in kinds)
         {
             menu.Items.Add(FormatMenu(k, item));
         }
 
-        var languages = new MenuFlyoutSubItem { Text = "Lingua dei titoli", Icon = new FontIcon { Glyph = "\uE8F2" } };
+        var languages = new MenuFlyoutSubItem { Text = Strings.Current.TitleLanguage, Icon = new FontIcon { Glyph = "\uE8F2" } };
         foreach (var language in ViewModel.Languages)
         {
             languages.Items.Add(new RadioMenuFlyoutItem
@@ -199,7 +225,7 @@ public sealed partial class MainWindow : Window
         }
         menu.Items.Add(languages);
 
-        var custom = new MenuFlyoutItem { Text = "Personalizza formati…", Icon = new FontIcon { Glyph = "\uE713" } };
+        var custom = new MenuFlyoutItem { Text = Strings.Current.MenuCustomizeFormats, Icon = new FontIcon { Glyph = "\uE713" } };
         custom.Click += Settings_Click;
         menu.Items.Add(custom);
         if (item is not null)
@@ -216,11 +242,11 @@ public sealed partial class MainWindow : Window
         {
             if (item.Entry.TargetPath is not null)
             {
-                var copy = new MenuFlyoutItem { Text = "Copia nuovo nome", Icon = new FontIcon { Glyph = "\uE8C8" } };
+                var copy = new MenuFlyoutItem { Text = Strings.Current.MenuCopyNewName, Icon = new FontIcon { Glyph = "\uE8C8" } };
                 copy.Click += (_, _) => CopyToClipboard(Path.GetFileName(item.Entry.TargetPath));
                 menu.Items.Add(copy);
             }
-            var reveal = new MenuFlyoutItem { Text = "Mostra in Esplora File", Icon = new FontIcon { Glyph = "\uEC50" } };
+            var reveal = new MenuFlyoutItem { Text = Strings.Current.MenuRevealExplorer, Icon = new FontIcon { Glyph = "\uEC50" } };
             reveal.Click += (_, _) => App.Services.GetRequiredService<IShellService>().RevealInExplorer(item.Entry.SourcePath);
             menu.Items.Add(reveal);
         }
@@ -240,7 +266,7 @@ public sealed partial class MainWindow : Window
 
     private MenuFlyoutSubItem FormatMenu(MediaKind kind, FileItemViewModel? item)
     {
-        var sub = new MenuFlyoutSubItem { Text = $"Formato nome ({KindNames[kind]})", Icon = new FontIcon { Glyph = "\uE8AC" } };
+        var sub = new MenuFlyoutSubItem { Text = Strings.Current.Format(nameof(Strings.MenuNameFormat), KindName(kind)), Icon = new FontIcon { Glyph = "\uE8AC" } };
         var current = ViewModel.TemplateFor(kind);
         foreach (var preset in TemplatePresets.For(kind))
         {

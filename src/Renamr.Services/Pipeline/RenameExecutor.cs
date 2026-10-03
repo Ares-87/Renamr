@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using Renamr.Core.Errors;
 using Renamr.Core.Models;
 using Renamr.Services.IO;
@@ -28,7 +29,7 @@ public sealed class RenameExecutor(MediaFileProcessor processor, RenameJournal j
             journal.BeginSession(boundary.Root);
         }
 
-        var phase = options.DryRun ? "Simulazione" : "Ridenominazione";
+        var phase = options.DryRun ? Strings.Current.PhaseDryRun : Strings.Current.PhaseRename;
         progress?.Report(new RenameProgress(0, todo.Count, null, phase));
 
         for (var n = 0; n < todo.Count; n++)

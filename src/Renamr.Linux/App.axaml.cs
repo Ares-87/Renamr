@@ -1,4 +1,6 @@
+using System.Globalization;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
@@ -7,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Renamr.Core.Abstractions;
+using Renamr.Core.Localization;
 using Renamr.Linux.Services;
 using Renamr.Linux.Views;
 using Renamr.Presentation.Services;
@@ -49,6 +52,10 @@ public sealed partial class App : Application
         services.AddSingleton<MainWindow>();
         _host = builder.Build();
 
+        // Lingua dell'interfaccia: quella scelta nelle impostazioni, altrimenti quella del sistema (inglese se non c'è).
+        var uiLanguage = _host.Services.GetRequiredService<InterfaceSettingsStore>().Load().Language;
+        Strings.Current.SetLanguage(Strings.Resolve(uiLanguage, CultureInfo.CurrentUICulture));
+
         // Ultima rete di sicurezza: un'eccezione non gestita finisce nel log invece di chiudere l'app a metà lavoro.
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {
@@ -69,5 +76,26 @@ public sealed partial class App : Application
             }
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>Dopo un cambio di lingua: stessa posizione e dimensione, stesso ViewModel, testi nuovi.</summary>
+    public static void ReplaceMainWindow(MainWindow old)
+    {
+        ArgumentNullException.ThrowIfNull(old);
+        var window = new MainWindow(old.ViewModel)
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Position = old.Position,
+            Width = old.Width,
+            Height = old.Height,
+            WindowState = old.WindowState,
+        };
+        Services.GetRequiredService<WindowContext>().Window = window;
+        if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.MainWindow = window;
+        }
+        window.Show();
+        old.Close();
     }
 }

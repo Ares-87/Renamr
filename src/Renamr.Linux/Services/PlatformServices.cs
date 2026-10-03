@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using Renamr.Core.Localization;
 using Renamr.Presentation.Services;
 
 namespace Renamr.Linux.Services;
@@ -20,7 +21,7 @@ public sealed class FolderPickerService(WindowContext context) : IFolderPickerSe
         var storage = window.StorageProvider;
         var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Scegli la cartella della libreria",
+            Title = Strings.Current.PickFolderTitle,
             AllowMultiple = false,
             SuggestedStartLocation = await storage.TryGetWellKnownFolderAsync(WellKnownFolder.Videos),
         });

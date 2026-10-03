@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Renamr.Core.Errors;
@@ -30,7 +31,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
         var boundary = new PathBoundary(rootFolder);
         var results = plan.ToArray();
         var todo = Enumerable.Range(0, results.Length).Where(i => results[i] is { Status: PlanStatus.Ready, NameOnly: true, TargetPath: not null }).ToList();
-        var phase = dryRun ? "Simulazione" : "Ridenominazione";
+        var phase = dryRun ? Strings.Current.PhaseDryRun : Strings.Current.PhaseRename;
         var done = 0;
         progress?.Report(new RenameProgress(0, todo.Count, null, phase));
 
@@ -129,7 +130,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
                 else
                 {
                     _log.LogError("File rimasto con il nome temporaneo {Temp}: {Error}", temp, back.Error);
-                    result = result with { Error = RenamrError.From(RenamrErrorCode.IoFailure, $"Il file è rimasto come {Path.GetFileName(temp)}: {back.Error}") };
+                    result = result with { Error = RenamrError.From(RenamrErrorCode.IoFailure, Strings.Current.Format(nameof(Strings.BatchLeftAsTemporary), Path.GetFileName(temp), back.Error)) };
                 }
             }
             Finish(i, result with { SourcePath = entry.SourcePath });
