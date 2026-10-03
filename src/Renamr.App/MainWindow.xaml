@@ -233,7 +233,7 @@
                      Margin="16,0,24,0"
                      IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
                      SelectionChanged="ModeBar_SelectionChanged">
-            <SelectorBarItem x:Name="MediaModeItem" Text="Film e serie"
+            <SelectorBarItem x:Name="MediaModeItem" Text="Film, Serie e Musica"
                              ToolTipService.ToolTip="Riconosce film, serie TV, anime e musica nei database online, con metadati e date di uscita" />
             <SelectorBarItem x:Name="BatchModeItem" Text="Rinomina file"
                              ToolTipService.ToolTip="Qualunque file: numerazione, sostituzioni, maiuscole e altre regole. Cambia solo il nome" />
