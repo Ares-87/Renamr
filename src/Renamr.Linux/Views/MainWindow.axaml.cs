@@ -78,19 +78,20 @@ public sealed partial class MainWindow : Window
     private void SetDropHighlight(bool active)
     {
         DropZoneOutline.Classes.Set("active", active);
-        DropZoneTitle.Text = active ? "Rilascia per analizzare" : "Trascina qui la cartella della tua libreria";
+        DropZoneTitle.Text = active ? "Rilascia per analizzare" : ViewModel.DropZoneTitle;
     }
 
     // ---- Date: su Linux la data di creazione si cambia solo su alcuni dischi ---------------------------------
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(MainViewModel.RootFolder))
+        if (e.PropertyName is not (nameof(MainViewModel.RootFolder) or nameof(MainViewModel.IsBatchMode)))
         {
             return;
         }
+        // In modalità "Rinomina file" le date non si toccano: l'avviso non serve.
         var root = ViewModel.RootFolder;
-        if (root is null || FileCreationTime.CanSet(root))
+        if (root is null || ViewModel.IsBatchMode || FileCreationTime.CanSet(root))
         {
             DateHintBar.IsOpen = false;
             return;
@@ -100,6 +101,18 @@ public sealed partial class MainWindow : Window
             "alla data di uscita e, se attivo, la scrive anche nei metadati interni. Sui dischi NTFS montati con ntfs-3g " +
             "(i dischi esterni di Windows) e sulle cartelle di rete SMB la data di creazione viene cambiata.";
         DateHintBar.IsOpen = true;
+    }
+
+    // ---- Regole della modalità "Rinomina file" ----------------------------------------------------------------
+
+    private void AddRule_Click(object? sender, RoutedEventArgs e)
+    {
+        var menu = new FAMenuFlyout();
+        foreach (var kind in BatchRenameViewModel.RuleKinds)
+        {
+            menu.Items.Add(new FAMenuFlyoutItem { Text = kind.Label, Command = ViewModel.Batch.AddRuleCommand, CommandParameter = kind.Key });
+        }
+        menu.ShowAt(AddRuleButton);
     }
 
     // ---- Pannelli ---------------------------------------------------------------------------------------------
@@ -142,12 +155,22 @@ public sealed partial class MainWindow : Window
         // Tasto destro su una riga: formati del suo tipo; su un'area vuota: formati di tutti i tipi.
         var item = (args.Source as Control)?.DataContext as FileItemViewModel;
         args.Handled = true;
+        if (ViewModel.IsBatchMode && item is null)
+        {
+            return; // in "Rinomina file" il menu ha senso solo su una riga
+        }
         BuildContextMenu(item).ShowAt(FileList, showAtPointer: true);
     }
 
     private FAMenuFlyout BuildContextMenu(FileItemViewModel? item)
     {
         var menu = new FAMenuFlyout();
+        if (ViewModel.IsBatchMode)
+        {
+            // Qui i nomi vengono dalle regole: niente formati né lingua, solo le azioni sul file.
+            AddFileActions(menu, item);
+            return menu;
+        }
 
         MediaKind[] kinds = item?.TemplateKind is { } kind ? [kind] : [.. KindNames.Keys];
         foreach (var k in kinds)
@@ -172,10 +195,18 @@ public sealed partial class MainWindow : Window
         var custom = new FAMenuFlyoutItem { Text = "Personalizza formati…", IconSource = new FASymbolIconSource { Symbol = FASymbol.Settings } };
         custom.Click += Settings_Click;
         menu.Items.Add(custom);
-
         if (item is not null)
         {
             menu.Items.Add(new FAMenuFlyoutSeparator());
+        }
+        AddFileActions(menu, item);
+        return menu;
+    }
+
+    private void AddFileActions(FAMenuFlyout menu, FileItemViewModel? item)
+    {
+        if (item is not null)
+        {
             if (item.Entry.TargetPath is { } targetPath)
             {
                 var copy = new FAMenuFlyoutItem { Text = "Copia nuovo nome", IconSource = new FASymbolIconSource { Symbol = FASymbol.Copy } };
@@ -192,7 +223,6 @@ public sealed partial class MainWindow : Window
             reveal.Click += (_, _) => App.Services.GetRequiredService<IShellService>().RevealInExplorer(item.Entry.SourcePath);
             menu.Items.Add(reveal);
         }
-        return menu;
     }
 
     private FAMenuFlyoutSubItem FormatMenu(MediaKind kind, FileItemViewModel? item)

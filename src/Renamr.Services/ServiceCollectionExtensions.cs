@@ -5,6 +5,7 @@ using Microsoft.Extensions.Http.Resilience;
 using Renamr.Core.Abstractions;
 using Renamr.Core.Parsing;
 using Renamr.Core.Templating;
+using Renamr.Services.BatchRename;
 using Renamr.Services.IO;
 using Renamr.Services.Matching;
 using Renamr.Services.Metadata;
@@ -66,6 +67,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<MediaFileProcessor>();
         services.AddTransient<RenamePlanner>();
         services.AddTransient<RenameExecutor>();
+
+        // Modalità "Rinomina file": qualunque file, solo il nome.
+        services.AddSingleton<BatchRenamePlanner>();
+        services.AddSingleton<BatchRenameStore>();
+        services.AddTransient<BatchRenameExecutor>();
         return services;
     }
 

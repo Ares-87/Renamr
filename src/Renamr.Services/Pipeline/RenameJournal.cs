@@ -20,7 +20,13 @@ public sealed class RenameJournal(IAppPaths paths) : IDisposable
         {
             _writer?.Dispose();
             Directory.CreateDirectory(paths.JournalDirectory);
-            CurrentFile = Path.Combine(paths.JournalDirectory, $"{DateTime.Now:yyyyMMdd-HHmmss}.jsonl");
+            // Due sessioni nello stesso secondo (rinomine ravvicinate) non devono scontrarsi sullo stesso file.
+            var stamp = $"{DateTime.Now:yyyyMMdd-HHmmss}";
+            CurrentFile = Path.Combine(paths.JournalDirectory, $"{stamp}.jsonl");
+            for (var n = 2; File.Exists(CurrentFile); n++)
+            {
+                CurrentFile = Path.Combine(paths.JournalDirectory, $"{stamp}-{n}.jsonl");
+            }
             _writer = new StreamWriter(new FileStream(CurrentFile, FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
             Write(new JournalEntry("session", rootFolder, null, DateTimeOffset.Now));
         }

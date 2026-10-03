@@ -7,8 +7,8 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <!-- CA1822: i servizi sono istanze iniettate via DI; CA1848/CA1873: LoggerMessage non necessario qui. -->
     <NoWarn>$(NoWarn);CA1822;CA1848;CA1873</NoWarn>
-    <!-- Versione mostrata nella barra del titolo ("Renamr v1.5.0"): si aumenta a ogni pull request. -->
-    <Version>1.5.0</Version>
+    <!-- Versione mostrata nella barra del titolo ("Renamr v1.6.0"): si aumenta a ogni pull request. -->
+    <Version>1.6.0</Version>
     <Company>Renamr</Company>
     <Product>Renamr</Product>
   </PropertyGroup>
