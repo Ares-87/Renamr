@@ -216,3 +216,8 @@ In alto nella finestra un selettore sceglie tra **Film e serie** (tutto quanto d
   `Directory.Build.props` pubblica una release con `Renamr-X.Y.Z-win-x64.zip`, `-win-arm64.zip`, `-linux-x64.tar.gz` e
   `-linux-arm64.tar.gz`; GitHub aggiunge da solo gli archivi del codice sorgente. Un tag diverso dalla versione ferma il workflow.
 - `fpcalc` non è incluso nei pacchetti: su Windows va copiato in `Tools\`, su Linux arriva da `libchromaprint-tools`.
+- **File unico (v1.11.0).** Oltre a zip e tar.gz la release ha `Renamr-X.Y.Z-win-x64.exe`/`-win-arm64.exe` (WinUI
+  self-contained con `PublishSingleFile` e `IncludeAllContentForSelfExtract`: al primo avvio si scompatta in una cartella
+  temporanea, per questo `fpcalc.exe` si cerca anche accanto all'eseguibile vero) e `Renamr-X.Y.Z-linux-x64.AppImage`/
+  `-linux-arm64.AppImage` (`build/linux/make-appimage.sh`). La CI avvia l'exe x64 (`build/windows/smoke-test.ps1`) e
+  l'AppImage x64 e fallisce se non si apre la finestra.
