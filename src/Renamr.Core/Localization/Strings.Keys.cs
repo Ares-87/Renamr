@@ -17,6 +17,7 @@ public sealed partial class Strings
     public string DropCaption => Get();
     public string PickFolder => Get();
     public string PickFolderTitle => Get();
+    public string AnalyzeFolder => Get();
     public string TitleLanguage => Get();
     public string TitleLanguageTip => Get();
     public string Settings => Get();

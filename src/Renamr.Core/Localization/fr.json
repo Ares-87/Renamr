@@ -14,6 +14,7 @@
   "DropCaption": "Ouvrir ce dossier dans Renamr",
   "PickFolder": "Choisir un dossier…",
   "PickFolderTitle": "Choisissez le dossier de la bibliothèque",
+  "AnalyzeFolder": "Analyser « {0} »",
 
   "TitleLanguage": "Langue des titres",
   "TitleLanguageTip": "Langue des titres : la changer relance aussitôt les recherches",

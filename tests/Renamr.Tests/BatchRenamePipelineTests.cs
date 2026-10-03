@@ -142,6 +142,36 @@ public class BatchRenamePipelineTests : IDisposable
     }
 
     [Fact]
+    public void Back_to_media_mode_waits_for_the_user_before_searching_online() => UiThread.Run(async () =>
+    {
+        _lib.File("The.Matrix.1999.1080p.mkv");
+        using var sp = Services();
+        var vm = sp.GetRequiredService<MainViewModel>();
+        vm.BatchPreviewDelay = TimeSpan.FromHours(1);
+        vm.IsBatchMode = true;
+        await vm.PickFolderCommand.ExecuteAsync(null);
+        Assert.Equal(AppPhase.Preview, vm.Phase);
+
+        vm.IsBatchMode = false;
+
+        // Nessuna analisi partita da sola: schermata iniziale con l'ultima cartella pronta a un clic.
+        Assert.Equal(AppPhase.SelectFolder, vm.Phase);
+        Assert.Empty(vm.Items);
+        Assert.True(vm.CanAnalyzeLastFolder);
+        Assert.Contains(Path.GetFileName(_lib.Root), vm.AnalyzeLastFolderText);
+
+        // Nemmeno cambiare la lingua dei titoli fa partire le ricerche da qui.
+        vm.SelectedLanguage = vm.Languages.First(l => l.Tag != vm.CurrentLanguage);
+        await Task.Delay(50);
+        Assert.Equal(AppPhase.SelectFolder, vm.Phase);
+
+        await vm.AnalyzeLastFolderCommand.ExecuteAsync(null);
+        Assert.Equal(AppPhase.Preview, vm.Phase);
+        Assert.Single(vm.Items);
+        Assert.False(vm.CanAnalyzeLastFolder);
+    });
+
+    [Fact]
     public void ViewModel_batch_flow_preview_rules_apply_undo() => UiThread.Run(async () =>
     {
         _lib.File("IMG_0002.JPG");

@@ -14,6 +14,7 @@
   "DropCaption": "Open this folder in Renamr",
   "PickFolder": "Choose folder…",
   "PickFolderTitle": "Choose the library folder",
+  "AnalyzeFolder": "Analyze “{0}”",
 
   "TitleLanguage": "Title language",
   "TitleLanguageTip": "Title language: changing it restarts the lookups right away",
