@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Layer di dominio puro: nessuna dipendenza da UI, I/O o rete. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Renamr.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

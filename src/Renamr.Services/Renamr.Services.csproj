@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Infrastruttura: I/O sicuro, provider online, pipeline di ridenominazione. Nessuna dipendenza dalla UI. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Renamr.Services</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Renamr.Core\Renamr.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="TagLibSharp" />
+    <PackageReference Include="TMDbLib" />
+    <PackageReference Include="MusicBrainzAPI" />
+    <PackageReference Include="Polly.Core" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Renamr.Tests" />
+  </ItemGroup>
+</Project>

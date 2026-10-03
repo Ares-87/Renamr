@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    ViewModel indipendenti dalla piattaforma UI: nessun riferimento a WinUI.
+    Si testano con xUnit e potrebbero essere riusati da una UI WPF-UI o Avalonia senza modifiche.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Renamr.Presentation</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Renamr.Core\Renamr.Core.csproj" />
+    <ProjectReference Include="..\Renamr.Services\Renamr.Services.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+</Project>

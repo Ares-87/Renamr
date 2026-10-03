@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- CA1822: i servizi sono istanze iniettate via DI; CA1848/CA1873: LoggerMessage non necessario qui. -->
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1873</NoWarn>
+    <Company>Renamr</Company>
+    <Product>Renamr</Product>
+  </PropertyGroup>
+</Project>

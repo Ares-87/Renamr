@@ -1,0 +1,62 @@
+using Renamr.Core.Models;
+
+namespace Renamr.Core.Options;
+
+/// <summary>Impostazioni persistenti (salvate in %LOCALAPPDATA%\Renamr\settings.json).</summary>
+public sealed class RenamrSettings
+{
+    public TemplateSettings Templates { get; set; } = new();
+    public MatchingSettings Matching { get; set; } = new();
+    public ProviderKeys Keys { get; set; } = new();
+
+    /// <summary>Estensioni considerate, per tipo.</summary>
+    public HashSet<string> VideoExtensions { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+        { ".mkv", ".mp4", ".m4v", ".avi", ".mov", ".wmv", ".ts", ".webm" };
+    public HashSet<string> AudioExtensions { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+        { ".mp3", ".flac", ".m4a", ".ogg", ".opus", ".wma", ".wav", ".aiff" };
+    public HashSet<string> CompanionExtensions { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+        { ".srt", ".ass", ".ssa", ".sub", ".idx", ".nfo" };
+}
+
+public sealed class TemplateSettings
+{
+    public string Movie { get; set; } = "{Title} ({Year}) [{Resolution}]";
+    public string Episode { get; set; } = "{Show Title} - S{Season:00}E{Episode:00} - {Episode Title}";
+    public string Anime { get; set; } = "{Show Title} - {Absolute:000} - {Episode Title}";
+    public string Music { get; set; } = "{Artist} - {Album} - {Track:00} - {Title}";
+
+    public string For(MediaKind kind) => kind switch
+    {
+        MediaKind.Movie => Movie,
+        MediaKind.Episode => Episode,
+        MediaKind.Anime => Anime,
+        MediaKind.Music => Music,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Nessun template per questo tipo."),
+    };
+}
+
+public sealed class MatchingSettings
+{
+    /// <summary>Sopra questa soglia la riga è "Pronto"; sotto è "Bassa confidenza".</summary>
+    public double HighConfidenceThreshold { get; set; } = 0.80;
+
+    /// <summary>Sotto questa soglia il candidato è scartato del tutto.</summary>
+    public double MinimumConfidence { get; set; } = 0.45;
+
+    public string Language { get; set; } = "it-IT";
+
+    /// <summary>Ricerche in parallelo durante l'analisi (le scritture su disco restano sequenziali).</summary>
+    public int MaxParallelLookups { get; set; } = 4;
+}
+
+/// <summary>Le chiavi sono cifrate a riposo con DPAPI dal SettingsService dell'app.</summary>
+public sealed class ProviderKeys
+{
+    public string? TmdbApiKey { get; set; }
+    public string? OmdbApiKey { get; set; }
+    public string? TheTvdbApiKey { get; set; }
+    public string? TheTvdbPin { get; set; }
+    public string? AcoustIdClientKey { get; set; }
+    public string? AniDbClientName { get; set; }
+    public int AniDbClientVersion { get; set; } = 1;
+}
