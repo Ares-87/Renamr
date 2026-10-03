@@ -5,6 +5,7 @@ using Renamr.Core.Abstractions;
 using Renamr.Core.Errors;
 using Renamr.Core.Matching;
 using Renamr.Core.Models;
+using Renamr.Services.Providers.Tmdb;
 using Renamr.Services.Resilience;
 using TMDbLib.Client;
 using TMDbLib.Objects.Exceptions;
@@ -23,32 +24,31 @@ namespace Renamr.Services.Providers.Movies;
 /// 4. dettaglio completo (IMDb id, generi, data esatta) solo per il migliore: una chiamata in più, non dieci.
 /// </para>
 /// </summary>
-public sealed class TmdbMovieProvider : IMetadataProvider, IDisposable
+public sealed class TmdbMovieProvider : IMetadataProvider
 {
     private const int MaxCandidates = 8;
 
     private readonly ISettingsStore _settings;
     private readonly ILogger _log;
     private readonly ResiliencePipeline _pipeline;
-    private readonly Lock _gate = new();
-    private TMDbClient? _client;
-    private string? _clientKey;
+    private readonly TmdbClientAccessor _clients;
 
-    public TmdbMovieProvider(ISettingsStore settings, ILogger<TmdbMovieProvider>? logger = null)
+    public TmdbMovieProvider(ISettingsStore settings, TmdbClientAccessor clients, ILogger<TmdbMovieProvider>? logger = null)
     {
         _settings = settings;
+        _clients = clients;
         _log = logger ?? NullLogger<TmdbMovieProvider>.Instance;
         _pipeline = ResiliencePipelines.CreateDefault(IsTransient);
     }
 
     public string Name => "TMDb";
     public int Priority => 10;
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_settings.Current.Keys.TmdbApiKey);
+    public bool IsConfigured => _clients.IsConfigured;
     public bool Supports(MediaKind kind) => kind == MediaKind.Movie;
 
     public async Task<IReadOnlyList<MatchCandidate>> SearchAsync(MediaQuery query, CancellationToken cancellationToken)
     {
-        var client = GetClient();
+        var client = _clients.Get(Name);
         var language = _settings.Current.Matching.Language;
 
         try
@@ -118,36 +118,6 @@ public sealed class TmdbMovieProvider : IMetadataProvider, IDisposable
         Genres = details?.Genres?.Select(g => g.Name).OfType<string>().ToList() ?? [],
     };
 
-    /// <summary>Un client per chiave API: se l'utente cambia la chiave nelle impostazioni, ne creiamo uno nuovo.</summary>
-    private TMDbClient GetClient()
-    {
-        var key = _settings.Current.Keys.TmdbApiKey;
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            throw new ProviderException(Name, RenamrErrorCode.ProviderAuthFailed, "Chiave API TMDb non impostata");
-        }
-
-        lock (_gate)
-        {
-            if (_client is null || _clientKey != key)
-            {
-                _client?.Dispose();
-                _client = new TMDbClient(key) { MaxRetryCount = 0 }; // i retry li gestisce Polly
-                _clientKey = key;
-            }
-            return _client;
-        }
-    }
-
-    private static bool IsTransient(Exception ex) =>
+    internal static bool IsTransient(Exception ex) =>
         ex is RequestLimitExceededException or GeneralHttpException || ResiliencePipelines.IsTransientHttp(ex);
-
-    public void Dispose()
-    {
-        lock (_gate)
-        {
-            _client?.Dispose();
-            _client = null;
-        }
-    }
 }

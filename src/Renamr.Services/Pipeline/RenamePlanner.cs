@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Renamr.Core.Abstractions;
 using Renamr.Core.Errors;
 using Renamr.Core.Models;
+using Renamr.Core.Options;
 using Renamr.Services.IO;
 
 namespace Renamr.Services.Pipeline;
@@ -64,33 +65,9 @@ public sealed class RenamePlanner(
                 return Fail(path, parsed, code, string.Join(" · ", match.Trace));
             }
 
-            var metadata = match.Best.Metadata;
-            var template = settings.Current.Templates.For(TemplateKind(metadata, parsed));
-            var relative = templates.Render(template, metadata, parsed, parsed.Extension);
-
-            // Template con cartelle => organizzazione a partire dalla radice; altrimenti rinomina sul posto.
-            var baseDir = relative.Contains(Path.DirectorySeparatorChar, StringComparison.Ordinal)
-                ? boundary.Root
-                : Path.GetDirectoryName(path)!;
-
-            var check = boundary.ResolveTarget(baseDir, relative, out var target);
-            if (!check.Succeeded)
-            {
-                return Fail(path, parsed, check.Error!.Code, check.Error.Detail);
-            }
-
-            var unchanged = string.Equals(path, target, StringComparison.Ordinal);
             var low = match.Outcome == MatchOutcome.LowConfidence;
-            return new RenamePlanEntry
-            {
-                SourcePath = path,
-                TargetPath = target,
-                Parsed = parsed,
-                Metadata = metadata,
-                Confidence = match.Best.Confidence,
-                Status = low ? PlanStatus.LowConfidence : unchanged ? PlanStatus.Unchanged : PlanStatus.Ready,
-                Error = low ? RenamrError.From(RenamrErrorCode.LowConfidenceMatch, string.Join(" · ", match.Trace)) : null,
-            };
+            return BuildEntry(boundary, path, parsed, match.Best.Metadata, match.Best.Confidence,
+                low ? RenamrError.From(RenamrErrorCode.LowConfidenceMatch, string.Join(" · ", match.Trace)) : null);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -101,6 +78,57 @@ public sealed class RenamePlanner(
             _log.LogError(ex, "Analisi fallita per {Path}", path);
             return Fail(path, parsed, RenamrErrorCode.Unexpected, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Ricalcola i nomi proposti con i template correnti, senza rifare le ricerche online:
+    /// serve quando l'utente cambia formato al volo dal menu contestuale.
+    /// </summary>
+    public IReadOnlyList<RenamePlanEntry> Rerender(string rootFolder, IReadOnlyList<RenamePlanEntry> plan)
+    {
+        var boundary = new PathBoundary(rootFolder);
+        var threshold = settings.Current.Matching.HighConfidenceThreshold;
+        var entries = plan.Select(e =>
+        {
+            if (e.Metadata is null || e.Parsed is null || e.Status is not (PlanStatus.Ready or PlanStatus.LowConfidence or PlanStatus.Unchanged or PlanStatus.Error))
+            {
+                return e;
+            }
+            RenamrError? lowError = e.Confidence >= threshold
+                ? null
+                : e.Error is { Code: RenamrErrorCode.LowConfidenceMatch } previous ? previous : RenamrError.From(RenamrErrorCode.LowConfidenceMatch);
+            return BuildEntry(boundary, e.SourcePath, e.Parsed, e.Metadata, e.Confidence, lowError);
+        }).ToList();
+        return DetectConflicts(entries);
+    }
+
+    private RenamePlanEntry BuildEntry(PathBoundary boundary, string path, ParsedMediaName parsed, MediaMetadata metadata, double confidence, RenamrError? lowConfidence)
+    {
+        var template = settings.Current.Templates.For(TemplateSettings.KindFor(metadata.Kind, parsed));
+        var relative = templates.Render(template, metadata, parsed, parsed.Extension);
+
+        // Template con cartelle => organizzazione a partire dalla radice; altrimenti rinomina sul posto.
+        var baseDir = relative.Contains(Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            ? boundary.Root
+            : Path.GetDirectoryName(path)!;
+
+        var check = boundary.ResolveTarget(baseDir, relative, out var target);
+        if (!check.Succeeded)
+        {
+            return Fail(path, parsed, check.Error!.Code, check.Error.Detail);
+        }
+
+        var unchanged = string.Equals(path, target, StringComparison.Ordinal);
+        return new RenamePlanEntry
+        {
+            SourcePath = path,
+            TargetPath = target,
+            Parsed = parsed,
+            Metadata = metadata,
+            Confidence = confidence,
+            Status = lowConfidence is not null ? PlanStatus.LowConfidence : unchanged ? PlanStatus.Unchanged : PlanStatus.Ready,
+            Error = lowConfidence,
+        };
     }
 
     /// <summary>Due file non possono finire sullo stesso nome; un file esistente non viene mai sovrascritto.</summary>
@@ -132,13 +160,6 @@ public sealed class RenamePlanner(
         }
         return result;
     }
-
-    private static MediaKind TemplateKind(MediaMetadata md, ParsedMediaName parsed) => md.Kind switch
-    {
-        // Anime con "S01E05" nel nome: template episodi; con numerazione assoluta: template anime.
-        MediaKind.Anime when parsed.AbsoluteEpisode is null => MediaKind.Episode,
-        var k => k,
-    };
 
     private static RenamePlanEntry Fail(string path, ParsedMediaName? parsed, RenamrErrorCode code, string? detail = null) => new()
     {
