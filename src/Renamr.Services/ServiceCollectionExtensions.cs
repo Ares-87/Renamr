@@ -50,7 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMetadataProvider, TmdbMovieProvider>();
         services.AddSingleton<IMetadataProvider>(sp => new OmdbProvider(Client(sp, OmdbProvider.HttpClientName), sp.GetRequiredService<ISettingsStore>()));
         services.AddSingleton<IMetadataProvider>(sp => new TheTvdbProvider(Client(sp, TheTvdbProvider.HttpClientName), sp.GetRequiredService<ISettingsStore>()));
-        services.AddSingleton<IMetadataProvider>(sp => new TvMazeProvider(Client(sp, TvMazeProvider.HttpClientName)));
+        services.AddSingleton<IMetadataProvider>(sp => new TvMazeProvider(Client(sp, TvMazeProvider.HttpClientName), sp.GetRequiredService<ISettingsStore>()));
         services.AddSingleton<IMetadataProvider>(sp => ActivatorUtilities.CreateInstance<AniDbProvider>(sp, Client(sp, AniDbProvider.HttpClientName)));
         services.AddSingleton<IMetadataProvider>(sp => new AcoustIdProvider(Client(sp, AcoustIdProvider.HttpClientName), sp.GetRequiredService<ISettingsStore>()));
         services.AddSingleton<IMetadataProvider>(sp => new MusicBrainzProvider(Client(sp, MusicBrainzProvider.HttpClientName)));

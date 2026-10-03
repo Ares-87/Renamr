@@ -47,9 +47,20 @@ public sealed class TheTvdbProvider(HttpClient http, ISettingsStore settings) : 
             {
                 var score = seriesScore;
                 EpisodeDto? ep = null;
+                Translation? seriesTr = null, episodeTr = null;
                 if (result.Count == 0)
                 {
                     ep = await GetEpisodeAsync(s.TvdbId, query, cancellationToken).ConfigureAwait(false);
+                    var lang = LanguagePreference.From(settings.Current.Matching.Language).ThreeLetter;
+                    if (lang != "eng")
+                    {
+                        // Le traduzioni mancanti rispondono 404: si resta sul nome originale.
+                        seriesTr = (await GetAsync<Envelope<Translation>>($"series/{s.TvdbId}/translations/{lang}", cancellationToken).ConfigureAwait(false))?.Data;
+                        if (ep?.Id is { } epId)
+                        {
+                            episodeTr = (await GetAsync<Envelope<Translation>>($"episodes/{epId}/translations/{lang}", cancellationToken).ConfigureAwait(false))?.Data;
+                        }
+                    }
                     if (ep is null)
                     {
                         score *= 0.6;
@@ -60,14 +71,15 @@ public sealed class TheTvdbProvider(HttpClient http, ISettingsStore settings) : 
                     Kind = query.Kind,
                     Provider = Name,
                     ProviderId = s.TvdbId ?? string.Empty,
-                    Title = s.Name ?? query.Title,
+                    Title = NonEmpty(seriesTr?.Name) ?? s.Name ?? query.Title,
+                    OriginalTitle = s.Name,
                     Season = ep?.SeasonNumber ?? query.Season,
                     Episode = ep?.Number ?? query.Episode,
                     AbsoluteEpisode = ep?.AbsoluteNumber ?? query.AbsoluteEpisode,
-                    EpisodeTitle = ep?.Name,
+                    EpisodeTitle = NonEmpty(episodeTr?.Name) ?? ep?.Name,
                     ReleaseDate = ProviderHelpers.ParseDate(ep?.Aired),
                     YearOnly = int.TryParse(s.Year, NumberStyles.None, CultureInfo.InvariantCulture, out var year) ? year : null,
-                    Overview = ep?.Overview,
+                    Overview = NonEmpty(episodeTr?.Overview) ?? ep?.Overview,
                 }, Math.Round(score, 3)));
             }
             return result;
@@ -151,6 +163,8 @@ public sealed class TheTvdbProvider(HttpClient http, ISettingsStore settings) : 
         }
     }
 
+    private static string? NonEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
     public void Dispose() => _loginGate.Dispose();
 
     private sealed record LoginRequest([property: JsonPropertyName("apikey")] string ApiKey, [property: JsonPropertyName("pin")] string? Pin);
@@ -165,7 +179,10 @@ public sealed class TheTvdbProvider(HttpClient http, ISettingsStore settings) : 
 
     private sealed record EpisodePage([property: JsonPropertyName("episodes")] List<EpisodeDto>? Episodes);
 
+    private sealed record Translation([property: JsonPropertyName("name")] string? Name, [property: JsonPropertyName("overview")] string? Overview);
+
     private sealed record EpisodeDto(
+        [property: JsonPropertyName("id")] int? Id,
         [property: JsonPropertyName("name")] string? Name,
         [property: JsonPropertyName("aired")] string? Aired,
         [property: JsonPropertyName("seasonNumber")] int? SeasonNumber,
