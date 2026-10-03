@@ -1,5 +1,12 @@
 using System.Diagnostics;
 using System.Net;
+using Renamr.Core.Abstractions;
+using Renamr.Core.Errors;
+using Renamr.Core.Models;
+using Renamr.Core.Parsing;
+using Renamr.Core.Templating;
+using Renamr.Services.Metadata;
+using Renamr.Services.Pipeline;
 using Renamr.Services.Resilience;
 
 namespace Renamr.Tests;
@@ -85,6 +92,37 @@ public class CancellationTests
 
         var body = await client.GetStringAsync(new Uri("http://example.invalid/"));
         Assert.Equal("{\"ok\":true}", body);
+    }
+
+    [Fact]
+    public async Task Cancelled_analysis_ends_without_throwing_and_marks_files_as_cancelled()
+    {
+        using var lib = new TempLibrary();
+        lib.File("The.Matrix.1999.1080p.mkv", "x");
+        lib.File("Inception.2010.1080p.mkv", "x");
+        var settings = new InMemorySettingsStore();
+        var resolver = new HangingResolver();
+        var planner = new RenamePlanner(new MediaScanner(settings), new SceneCleaner(), resolver, new NameTemplateEngine(), new TagLibMetadataReader(), settings);
+        using var cts = new CancellationTokenSource();
+
+        var plan = planner.PlanAsync(lib.Root, null, cts.Token);
+        await resolver.Started.Task;
+        await cts.CancelAsync();
+
+        var entries = await plan; // nessuna eccezione: chi chiama controlla il token
+        Assert.All(entries, e => Assert.Equal((PlanStatus.Skipped, RenamrErrorCode.Cancelled), (e.Status, e.Error!.Code)));
+    }
+
+    private sealed class HangingResolver : IMetadataResolver
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<MatchResult> ResolveAsync(MediaQuery query, CancellationToken cancellationToken)
+        {
+            Started.TrySetResult();
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("mai raggiunto");
+        }
     }
 
     private sealed class StallingHandler : HttpMessageHandler

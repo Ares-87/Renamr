@@ -80,7 +80,7 @@ public sealed class TmdbMovieProvider : IMetadataProvider
                 if (i == 0)
                 {
                     details = await _pipeline.ExecuteAsync(
-                        async ct => await AbandonOnCancel.RunAsync(t => client.GetMovieAsync(movie.Id, language, cancellationToken: t), ct).ConfigureAwait(false),
+                        ct => AbandonOnCancel.RunValueAsync(t => client.GetMovieAsync(movie.Id, language, cancellationToken: t), ct),
                         cancellationToken).ConfigureAwait(false);
                 }
                 candidates.Add(new MatchCandidate(ToMetadata(movie, details), score));
@@ -100,7 +100,7 @@ public sealed class TmdbMovieProvider : IMetadataProvider
     private async Task<IReadOnlyList<SearchMovie>> SearchOnceAsync(TMDbClient client, string title, string language, int? year, CancellationToken cancellationToken)
     {
         var container = await _pipeline.ExecuteAsync(
-            async ct => await AbandonOnCancel.RunAsync(t => client.SearchMovieAsync(title, language, page: 0, includeAdult: false, year: year ?? 0, cancellationToken: t), ct).ConfigureAwait(false),
+            ct => AbandonOnCancel.RunValueAsync(t => client.SearchMovieAsync(title, language, page: 0, includeAdult: false, year: year ?? 0, cancellationToken: t), ct),
             cancellationToken).ConfigureAwait(false);
         return container?.Results ?? [];
     }

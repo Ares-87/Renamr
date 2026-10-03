@@ -40,7 +40,7 @@ public sealed class TmdbTvProvider(ISettingsStore settings, TmdbClientAccessor c
         try
         {
             var container = await _pipeline.ExecuteAsync(
-                async ct => await AbandonOnCancel.RunAsync(t => client.SearchTvShowAsync(query.Title, language, page: 0, includeAdult: false, firstAirDateYear: 0, cancellationToken: t), ct).ConfigureAwait(false),
+                ct => AbandonOnCancel.RunValueAsync(t => client.SearchTvShowAsync(query.Title, language, page: 0, includeAdult: false, firstAirDateYear: 0, cancellationToken: t), ct),
                 cancellationToken).ConfigureAwait(false);
             var hits = container?.Results ?? [];
             if (hits.Count == 0)
@@ -68,7 +68,7 @@ public sealed class TmdbTvProvider(ISettingsStore settings, TmdbClientAccessor c
                 if (result.Count == 0)
                 {
                     details = await _pipeline.ExecuteAsync(
-                        async ct => await AbandonOnCancel.RunAsync(t => client.GetTvShowAsync(show.Id, TvShowMethods.ExternalIds, language, cancellationToken: t), ct).ConfigureAwait(false),
+                        ct => AbandonOnCancel.RunValueAsync(t => client.GetTvShowAsync(show.Id, TvShowMethods.ExternalIds, language, cancellationToken: t), ct),
                         cancellationToken).ConfigureAwait(false);
                     number = ResolveNumber(query, details);
                     if (number is { } n)
@@ -125,7 +125,7 @@ public sealed class TmdbTvProvider(ISettingsStore settings, TmdbClientAccessor c
         try
         {
             return await _pipeline.ExecuteAsync(
-                async ct => await AbandonOnCancel.RunAsync(t => client.GetTvEpisodeAsync(showId, season, number, language: language, cancellationToken: t), ct).ConfigureAwait(false),
+                ct => AbandonOnCancel.RunValueAsync(t => client.GetTvEpisodeAsync(showId, season, number, language: language, cancellationToken: t), ct),
                 cancellationToken).ConfigureAwait(false);
         }
         catch (NotFoundException)

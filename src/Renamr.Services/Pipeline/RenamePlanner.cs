@@ -32,12 +32,15 @@ public sealed class RenamePlanner(
         var done = 0;
         progress?.Report(new RenameProgress(0, files.Count, null, Strings.Current.PhaseAnalysis));
 
+        // Annulla non passa da ParallelOptions.CancellationToken: ogni file controlla ct e chiude subito come annullato,
+        // così nessuna eccezione esce dal corpo verso Parallel.ForEachAsync (Visual Studio fermerebbe il debug).
+        // Chi chiama controlla ct dopo l'attesa e scarta il piano parziale.
         await Parallel.ForEachAsync(
             Enumerable.Range(0, files.Count),
-            new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, settings.Current.Matching.MaxParallelLookups), CancellationToken = ct },
-            async (i, token) =>
+            new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, settings.Current.Matching.MaxParallelLookups) },
+            async (i, _) =>
             {
-                entries[i] = await PlanOneAsync(boundary, files[i], token).ConfigureAwait(false);
+                entries[i] = await PlanOneAsync(boundary, files[i], ct).ConfigureAwait(false);
                 progress?.Report(new RenameProgress(Interlocked.Increment(ref done), files.Count, entries[i], Strings.Current.PhaseAnalysis));
             }).ConfigureAwait(false);
 
@@ -47,6 +50,10 @@ public sealed class RenamePlanner(
     public async Task<RenamePlanEntry> PlanOneAsync(PathBoundary boundary, string path, CancellationToken ct)
     {
         ParsedMediaName? parsed = null;
+        if (ct.IsCancellationRequested)
+        {
+            return Cancelled(path, parsed);
+        }
         try
         {
             parsed = parser.Parse(path);
@@ -72,7 +79,7 @@ public sealed class RenamePlanner(
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            return Cancelled(path, parsed);
         }
         catch (Exception ex)
         {
@@ -168,6 +175,14 @@ public sealed class RenamePlanner(
         }
         return result;
     }
+
+    private static RenamePlanEntry Cancelled(string path, ParsedMediaName? parsed) => new()
+    {
+        SourcePath = path,
+        Parsed = parsed,
+        Status = PlanStatus.Skipped,
+        Error = RenamrError.From(RenamrErrorCode.Cancelled),
+    };
 
     private static RenamePlanEntry Fail(string path, ParsedMediaName? parsed, RenamrErrorCode code, string? detail = null) => new()
     {
