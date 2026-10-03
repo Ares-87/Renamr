@@ -77,6 +77,7 @@ public sealed class TheTvdbProvider(HttpClient http, ISettingsStore settings) : 
                     Episode = ep?.Number ?? query.Episode,
                     AbsoluteEpisode = ep?.AbsoluteNumber ?? query.AbsoluteEpisode,
                     EpisodeTitle = NonEmpty(episodeTr?.Name) ?? ep?.Name,
+                    EpisodeTitleLocalized = NonEmpty(episodeTr?.Name) is not null || LanguagePreference.From(settings.Current.Matching.Language).IsEnglish,
                     ReleaseDate = ProviderHelpers.ParseDate(ep?.Aired),
                     YearOnly = int.TryParse(s.Year, NumberStyles.None, CultureInfo.InvariantCulture, out var year) ? year : null,
                     Overview = NonEmpty(episodeTr?.Overview) ?? ep?.Overview,

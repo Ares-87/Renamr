@@ -104,6 +104,13 @@ public sealed class RenamePlanner(
 
     private RenamePlanEntry BuildEntry(PathBoundary boundary, string path, ParsedMediaName parsed, MediaMetadata metadata, double confidence, RenamrError? lowConfidence)
     {
+        // Il database ha l'episodio solo in un'altra lingua (TVmaze: inglese) ma il nome file ne ha già uno:
+        // "Silo S03E01 Chi sei tu" resta "Chi sei tu" invece di diventare "Who Are You".
+        if (!metadata.EpisodeTitleLocalized && parsed.EpisodeTitle is { } fromFileName)
+        {
+            metadata = metadata with { EpisodeTitle = fromFileName, EpisodeTitleLocalized = true };
+        }
+
         var template = settings.Current.Templates.For(TemplateSettings.KindFor(metadata.Kind, parsed));
         var relative = templates.Render(template, metadata, parsed, parsed.Extension);
 

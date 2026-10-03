@@ -100,6 +100,7 @@ public sealed class AniDbProvider : IMetadataProvider, IDisposable
                     Episode = episodeNumber,
                     AbsoluteEpisode = episodeNumber,
                     EpisodeTitle = PickTitle(episode, lang, null) ?? PickTitle(episode, "en", null) ?? PickTitle(episode, "x-jat", null),
+                    EpisodeTitleLocalized = lang == "en" || PickTitle(episode, lang, null) is not null,
                     ReleaseDate = ProviderHelpers.ParseDate((string?)episode?.Element("airdate")) ?? ProviderHelpers.ParseDate((string?)anime.Element("startdate")),
                     YearOnly = startYear,
                 }, Math.Round(Math.Clamp(score, 0, 1), 3)));

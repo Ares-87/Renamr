@@ -10,6 +10,7 @@ using Renamr.Core.Options;
 using Renamr.Core.Templating;
 using Renamr.Presentation.Messages;
 using Renamr.Presentation.Services;
+using Renamr.Services.Matching;
 using Renamr.Services.Pipeline;
 
 namespace Renamr.Presentation.ViewModels;
@@ -58,6 +59,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool IsLanguageHintOpen { get; set; }
+
+    /// <summary>Database che hanno dato errore nell'ultima analisi (es. chiave TMDb rifiutata): i titoli sono arrivati da altre fonti.</summary>
+    [ObservableProperty]
+    public partial string? ProviderWarning { get; private set; }
+
+    [ObservableProperty]
+    public partial bool IsProviderWarningOpen { get; set; }
 
     private ISettingsStore Settings => _services.GetRequiredService<ISettingsStore>();
 
@@ -171,6 +179,10 @@ public sealed partial class MainViewModel : ObservableObject
         Phase = AppPhase.Analyzing;
 
         var progress = new Progress<RenameProgress>(OnProgress);
+        var health = _services.GetService<ProviderHealth>();
+        health?.Reset();
+        ProviderWarning = null;
+        IsProviderWarningOpen = false;
         try
         {
             var planner = _services.GetRequiredService<RenamePlanner>();
@@ -186,6 +198,8 @@ public sealed partial class MainViewModel : ObservableObject
                 PublishIssue(entry, "Analisi");
             }
             RecountStatuses();
+            ProviderWarning = DescribeFailures(health);
+            IsProviderWarningOpen = ProviderWarning is not null;
             Phase = AppPhase.Preview;
         }
         catch (OperationCanceledException)
@@ -423,9 +437,27 @@ public sealed partial class MainViewModel : ObservableObject
         var english = current.Matching.Language.StartsWith("en", StringComparison.OrdinalIgnoreCase);
         LanguageHint = english || !string.IsNullOrWhiteSpace(current.Keys.TmdbApiKey)
             ? null
-            : $"Senza chiave TMDb i film non vengono riconosciuti e i titoli degli episodi restano in inglese: TVmaze, la fonte senza chiave, li ha solo in inglese. " +
+            : $"Senza chiave TMDb i film non vengono riconosciuti e TVmaze, la fonte senza chiave, ha i titoli degli episodi solo in inglese: se il nome del file ne contiene già uno, Renamr tiene quello. " +
               $"Per i titoli in {SelectedLanguage.Label.ToLowerInvariant()} crea una chiave gratuita su themoviedb.org (Impostazioni ➔ API) e incollala nelle impostazioni.";
         IsLanguageHintOpen = LanguageHint is not null;
+    }
+
+    private static string? DescribeFailures(ProviderHealth? health)
+    {
+        if (health is null || health.Failures.Count == 0)
+        {
+            return null;
+        }
+        var lines = health.Failures.OrderBy(f => f.Key, StringComparer.OrdinalIgnoreCase).Select(f => f switch
+        {
+            { Key: "TMDb", Value.Code: RenamrErrorCode.ProviderAuthFailed } =>
+                "TMDb ha rifiutato la chiave API, quindi i titoli sono arrivati da altre fonti (in inglese). " +
+                "In Impostazioni incolla la \"Chiave API\" che trovi su themoviedb.org in Impostazioni ➔ API.",
+            { Value.Code: RenamrErrorCode.ProviderAuthFailed } =>
+                $"{f.Key} ha rifiutato la chiave API: i suoi risultati sono stati sostituiti da altre fonti.",
+            _ => $"{f.Key}: {f.Value.Message.ToLowerInvariant()}, i suoi risultati sono stati sostituiti da altre fonti.",
+        });
+        return string.Join(Environment.NewLine, lines);
     }
 
     private async Task ReanalyzeIfOpenAsync()
