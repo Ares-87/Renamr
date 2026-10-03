@@ -30,6 +30,7 @@ public enum RenamrErrorCode
     MetadataFormatUnsupported = 300,
     MetadataWriteFailed = 301,
     DateSyncFailed = 302,
+    MetadataSkippedLargeFile = 303,
 
     Cancelled = 900,
     Unexpected = 999,

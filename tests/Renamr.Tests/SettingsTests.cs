@@ -24,6 +24,7 @@ public class SettingsTests : IDisposable
         var settings = store.Current;
         settings.Keys.TmdbApiKey = "secret-tmdb-key";
         settings.Templates.Movie = "{Title} [{Year}]";
+        settings.Output.WriteEmbeddedMetadata = false;
         await store.SaveAsync(settings);
 
         var json = await File.ReadAllTextAsync(Path.Combine(_lib.Root, "settings.json"));
@@ -32,6 +33,7 @@ public class SettingsTests : IDisposable
         using var reloaded = new JsonSettingsStore(paths, new ReverseProtector());
         Assert.Equal("secret-tmdb-key", reloaded.Current.Keys.TmdbApiKey);
         Assert.Equal("{Title} [{Year}]", reloaded.Current.Templates.Movie);
+        Assert.False(reloaded.Current.Output.WriteEmbeddedMetadata);
     }
 
     [Fact]

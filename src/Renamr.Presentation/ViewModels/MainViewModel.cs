@@ -28,7 +28,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly Dictionary<string, FileItemViewModel> _bySource = new(StringComparer.OrdinalIgnoreCase);
     private string? _lastJournal;
     private IReadOnlyList<RenamePlanEntry> _plan = [];
-    private bool _syncingLanguage;
+    private bool _syncingFromSettings;
 
     public MainViewModel(IServiceProvider services, IFolderPickerService folderPicker, IMessenger messenger, IssuesViewModel issues)
     {
@@ -102,6 +102,10 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(RunCommand))]
     [NotifyPropertyChangedFor(nameof(ActionableCount))]
     public partial bool IncludeLowConfidence { get; set; }
+
+    /// <summary>Scrivere titolo e data anche dentro i file (tag). Spento = solo nome e date del file system.</summary>
+    [ObservableProperty]
+    public partial bool WriteEmbeddedMetadata { get; set; } = true;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunCommand))]
@@ -221,7 +225,7 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task RunAsync(CancellationToken ct)
     {
         var root = RootFolder!;
-        var options = new RenameRunOptions { DryRun = IsDryRun, IncludeLowConfidence = IncludeLowConfidence };
+        var options = new RenameRunOptions { DryRun = IsDryRun, IncludeLowConfidence = IncludeLowConfidence, WriteEmbeddedMetadata = WriteEmbeddedMetadata };
         var plan = _plan;
 
         _messenger.Send(new RunStartedMessage(IsDryRun ? "Simulazione" : "Ridenominazione"));
@@ -316,9 +320,39 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ---- Lingua e formato al volo ---------------------------------------------------------------
 
+    partial void OnWriteEmbeddedMetadataChanged(bool value)
+    {
+        if (!_syncingFromSettings)
+        {
+            SaveWriteEmbeddedMetadataCommand.Execute(value);
+        }
+    }
+
+    /// <summary>La scelta "Scrivi metadati interni" resta per le prossime volte.</summary>
+    [RelayCommand]
+    private Task SaveWriteEmbeddedMetadataAsync(bool value)
+    {
+        var settings = Settings;
+        var current = settings.Current;
+        if (current.Output.WriteEmbeddedMetadata == value)
+        {
+            return Task.CompletedTask;
+        }
+        return settings.SaveAsync(new RenamrSettings
+        {
+            Templates = current.Templates,
+            Matching = current.Matching,
+            Keys = current.Keys,
+            Output = new OutputSettings { WriteEmbeddedMetadata = value },
+            VideoExtensions = current.VideoExtensions,
+            AudioExtensions = current.AudioExtensions,
+            CompanionExtensions = current.CompanionExtensions,
+        });
+    }
+
     partial void OnSelectedLanguageChanged(LanguageOption value)
     {
-        if (!_syncingLanguage && value is not null)
+        if (!_syncingFromSettings && value is not null)
         {
             SetLanguageCommand.Execute(value.Tag);
         }
@@ -347,6 +381,7 @@ public sealed partial class MainViewModel : ObservableObject
                 Language = tag,
             },
             Keys = current.Keys,
+            Output = current.Output,
             VideoExtensions = current.VideoExtensions,
             AudioExtensions = current.AudioExtensions,
             CompanionExtensions = current.CompanionExtensions,
@@ -374,6 +409,7 @@ public sealed partial class MainViewModel : ObservableObject
             Templates = current.Templates.With(preset.Kind, preset.Pattern),
             Matching = current.Matching,
             Keys = current.Keys,
+            Output = current.Output,
             VideoExtensions = current.VideoExtensions,
             AudioExtensions = current.AudioExtensions,
             CompanionExtensions = current.CompanionExtensions,
@@ -423,14 +459,15 @@ public sealed partial class MainViewModel : ObservableObject
     private void SyncFromSettings()
     {
         var current = Settings.Current;
-        _syncingLanguage = true;
+        _syncingFromSettings = true;
         try
         {
             SelectedLanguage = LanguageOption.For(current.Matching.Language);
+            WriteEmbeddedMetadata = current.Output.WriteEmbeddedMetadata;
         }
         finally
         {
-            _syncingLanguage = false;
+            _syncingFromSettings = false;
         }
         OnPropertyChanged(nameof(CurrentLanguage));
 
