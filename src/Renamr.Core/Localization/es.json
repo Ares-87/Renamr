@@ -14,6 +14,7 @@
   "DropCaption": "Abrir esta carpeta en Renamr",
   "PickFolder": "Elegir carpeta…",
   "PickFolderTitle": "Elige la carpeta de la biblioteca",
+  "AnalyzeFolder": "Analizar «{0}»",
 
   "TitleLanguage": "Idioma de los títulos",
   "TitleLanguageTip": "Idioma de los títulos: al cambiarlo las búsquedas se repiten al momento",
