@@ -120,7 +120,21 @@ dotnet publish src/Renamr.App -c Release -r win-x64 -p:Platform=x64 --self-conta
 
 Poi: copiare `fpcalc.exe` in `src/Renamr.App/Tools/` per il riconoscimento acustico e inserire le chiavi nelle Impostazioni (icona ingranaggio).
 
-## 8. Estendere
+## 8. Fonti dei dati e lingua dei titoli
+
+| Fonte | Chiave | Titoli nella lingua scelta |
+|---|---|---|
+| TMDb (film) | gratuita, registrazione | sì (titolo e trama tradotti dalla community) |
+| OMDb (film) | gratuita con limiti | no, solo inglese |
+| TheTVDB (serie) | registrazione | sì, traduzioni di serie ed episodi (`/translations/ita`) |
+| TVmaze (serie, anime) | nessuna | solo il titolo della serie, dagli AKA del paese; episodi in inglese |
+| AniDB (anime) | client gratuito | titolo ufficiale nella lingua se esiste, altrimenti romaji |
+| MusicBrainz (musica) | nessuna | non applicabile |
+| AcoustID (musica) | gratuita | non applicabile |
+
+La lingua si sceglie in Impostazioni ("it-IT"); ogni provider la converte nel formato che usa (`LanguagePreference`).
+
+## 9. Estendere
 
 - **Nuovo provider**: implementare `IMetadataProvider` (nome, priorità, tipi supportati, `SearchAsync` che lancia `ProviderException` sugli errori di servizio) e aggiungere una riga in `ServiceCollectionExtensions`.
 - **Nuovo segnaposto**: un caso in `NameTemplateEngine.Resolve`.

@@ -68,6 +68,7 @@ public sealed class AniDbProvider : IMetadataProvider, IDisposable
                 .Take(3)
                 .ToList();
 
+            var lang = LanguagePreference.From(_settings.Current.Matching.Language).TwoLetter;
             var result = new List<MatchCandidate>(best.Count);
             foreach (var (aid, _, titleScore) in best)
             {
@@ -93,12 +94,12 @@ public sealed class AniDbProvider : IMetadataProvider, IDisposable
                     Kind = MediaKind.Anime,
                     Provider = Name,
                     ProviderId = aid.ToString(CultureInfo.InvariantCulture),
-                    Title = PickTitle(anime.Element("titles"), "x-jat", "main") ?? query.Title,
+                    Title = PickTitle(anime.Element("titles"), lang, "official") ?? PickTitle(anime.Element("titles"), "x-jat", "main") ?? query.Title,
                     OriginalTitle = PickTitle(anime.Element("titles"), "ja", "official"),
                     Season = query.Season ?? 1,
                     Episode = episodeNumber,
                     AbsoluteEpisode = episodeNumber,
-                    EpisodeTitle = PickTitle(episode, "it", null) ?? PickTitle(episode, "en", null),
+                    EpisodeTitle = PickTitle(episode, lang, null) ?? PickTitle(episode, "en", null) ?? PickTitle(episode, "x-jat", null),
                     ReleaseDate = ProviderHelpers.ParseDate((string?)episode?.Element("airdate")) ?? ProviderHelpers.ParseDate((string?)anime.Element("startdate")),
                     YearOnly = startYear,
                 }, Math.Round(Math.Clamp(score, 0, 1), 3)));
@@ -111,7 +112,7 @@ public sealed class AniDbProvider : IMetadataProvider, IDisposable
         }
     }
 
-    private static string? PickTitle(XElement? parent, string lang, string? type) =>
+    internal static string? PickTitle(XElement? parent, string lang, string? type) =>
         parent?.Elements("title").FirstOrDefault(t =>
             (string?)t.Attribute(XNamespace.Xml + "lang") == lang && (type is null || (string?)t.Attribute("type") == type))?.Value;
 
