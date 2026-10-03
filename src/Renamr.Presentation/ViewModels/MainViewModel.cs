@@ -93,6 +93,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>"Renamr v1.1.0": accanto al nome, per capire al volo se si sta usando l'ultima revisione.</summary>
     public string AppTitle => AppInfo.Title;
 
+    /// <summary>"v1.8.0", accanto al logo.</summary>
+    public string AppVersion => $"v{AppInfo.Version}";
+
     /// <summary>Versione con commit, nel tooltip.</summary>
     public string AppDetails => AppInfo.Details;
 

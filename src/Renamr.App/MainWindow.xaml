@@ -200,7 +200,7 @@
         </Grid.Resources>
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="48" />    <!-- barra del titolo personalizzata -->
+            <RowDefinition Height="56" />    <!-- barra del titolo personalizzata, con il logo -->
             <RowDefinition Height="Auto" />  <!-- modalità: film e serie / rinomina file -->
             <RowDefinition Height="*" />     <!-- contenuto: drop-zone oppure diff view -->
             <RowDefinition Height="Auto" />  <!-- pannello errori/avvisi -->
@@ -208,37 +208,49 @@
         </Grid.RowDefinitions>
 
         <!-- ═══ Barra del titolo (zona di trascinamento della finestra) ═══ -->
-        <Grid x:Name="AppTitleBar" Padding="16,0,140,0" ColumnSpacing="12">
+        <Grid x:Name="AppTitleBar" Padding="24,0,140,0" ColumnSpacing="10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <FontIcon Glyph="&#xE8AC;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-            <TextBlock Grid.Column="1"
-                       Text="{x:Bind ViewModel.AppTitle}"
-                       ToolTipService.ToolTip="{x:Bind ViewModel.AppDetails}"
-                       VerticalAlignment="Center"
-                       Style="{StaticResource CaptionTextBlockStyle}" />
+            <!-- Logo e versione: il numero completo e il commit nel tooltip. -->
+            <Image Source="{ThemeResource RenamrWordmark}" Height="18" VerticalAlignment="Center"
+                   ToolTipService.ToolTip="{x:Bind ViewModel.AppDetails}" />
+            <Border Grid.Column="1" Style="{StaticResource VersionPillStyle}">
+                <TextBlock Text="{x:Bind ViewModel.AppVersion}" FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </Border>
             <TextBlock Grid.Column="2"
                        Text="{x:Bind ViewModel.RootFolder, Mode=OneWay}"
                        VerticalAlignment="Center"
+                       HorizontalAlignment="Right"
                        TextTrimming="CharacterEllipsis"
                        Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
         </Grid>
 
-        <!-- ═══ Modalità: film e serie (riconoscimento online) oppure qualunque file con regole ═══ -->
-        <SelectorBar x:Name="ModeBar"
-                     Grid.Row="1"
-                     Margin="16,0,24,0"
-                     IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
-                     SelectionChanged="ModeBar_SelectionChanged">
-            <SelectorBarItem x:Name="MediaModeItem" Text="{x:Bind loc:Strings.Current.ModeMedia}"
-                             ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ModeMediaTip}" />
-            <SelectorBarItem x:Name="BatchModeItem" Text="{x:Bind loc:Strings.Current.ModeBatch}"
-                             ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ModeBatchTip}" />
-        </SelectorBar>
+        <!-- ═══ Modalità a sinistra, impostazioni a destra: sempre a portata, in ogni fase ═══ -->
+        <Grid Grid.Row="1" Margin="16,0,24,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <SelectorBar x:Name="ModeBar"
+                         IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
+                         SelectionChanged="ModeBar_SelectionChanged">
+                <SelectorBarItem x:Name="MediaModeItem" Text="{x:Bind loc:Strings.Current.ModeMedia}"
+                                 ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ModeMediaTip}" />
+                <SelectorBarItem x:Name="BatchModeItem" Text="{x:Bind loc:Strings.Current.ModeBatch}"
+                                 ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ModeBatchTip}" />
+            </SelectorBar>
+            <Button Grid.Column="1" Style="{StaticResource RuleIconButtonStyle}" Click="Settings_Click"
+                    VerticalAlignment="Center"
+                    IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
+                    ToolTipService.ToolTip="{x:Bind loc:Strings.Current.Settings}">
+                <FontIcon Glyph="&#xE713;" FontSize="18" />
+            </Button>
+        </Grid>
 
         <!-- ═══ FASE 1 · Selezione & Drag-and-Drop ═══ -->
         <Grid x:Name="DropZone"
@@ -252,7 +264,7 @@
                        Stroke="{ThemeResource ControlStrongStrokeColorDefaultBrush}"
                        Fill="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="440">
-                <FontIcon Glyph="&#xE8B7;" FontSize="56" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                <Image Source="{ThemeResource RenamrLogo}" Height="64" Margin="0,0,0,12" HorizontalAlignment="Center" />
                 <TextBlock x:Name="DropZoneTitle"
                            Text="{x:Bind ViewModel.DropZoneTitle, Mode=OneWay}"
                            Style="{StaticResource SubtitleTextBlockStyle}"
@@ -278,13 +290,6 @@
                           ItemsSource="{x:Bind ViewModel.Languages}"
                           SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}"
                           DisplayMemberPath="Label" />
-                <!-- Le impostazioni anche prima di aprire una cartella (lingua dell'interfaccia, chiavi API). -->
-                <HyperlinkButton HorizontalAlignment="Center" Click="Settings_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE713;" FontSize="14" />
-                        <TextBlock Text="{x:Bind loc:Strings.Current.Settings}" />
-                    </StackPanel>
-                </HyperlinkButton>
             </StackPanel>
         </Grid>
 
@@ -602,11 +607,6 @@
                 <Button Command="{x:Bind ViewModel.CancelCommand}"
                         Content="{x:Bind loc:Strings.Current.Cancel}"
                         Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
-                <Button Click="Settings_Click"
-                        ToolTipService.ToolTip="{x:Bind loc:Strings.Current.Settings}"
-                        Visibility="{x:Bind ui:Ui.Collapsed(ViewModel.IsBusy), Mode=OneWay}">
-                    <FontIcon Glyph="&#xE713;" FontSize="16" />
-                </Button>
                 <Button Content="{x:Bind loc:Strings.Current.ChangeFolder}"
                         Command="{x:Bind ViewModel.ResetCommand}"
                         Visibility="{x:Bind ui:Ui.Collapsed(ViewModel.IsBusy), Mode=OneWay}" />

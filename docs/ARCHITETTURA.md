@@ -200,3 +200,9 @@ In alto nella finestra un selettore sceglie tra **Film e serie** (tutto quanto d
   entrambi funzionano sempre.
 - In modalità "Rinomina file" le Impostazioni mostrano solo l'interfaccia: formati, chiavi API e riconoscimento riguardano
   solo "Film, Serie e Musica".
+
+## 14. Logo, icona e layout
+
+- Sorgenti in `assets/brand`: `renamr-logo.svg` (navy, tema chiaro), `renamr-logo-dark.svg` (bianco, tema scuro), `renamr-icon.svg` (simbolo quadrato "R" con cursore) e `renamr.ico` multi-risoluzione; `make_svg.py` e `make_png.py` rigenerano tutto. Colori: navy `#0F1B3D`, blu accento `#2F6BFF` (anche colore d'accento dell'app Linux).
+- Le due app usano PNG ricavati da queste sorgenti (`Assets/`): logo grande nella schermata iniziale, solo scritta nella barra del titolo, scelti per tema (`ThemeDictionaries` in WinUI, `Resources.ThemeDictionaries` in Avalonia). `renamr.ico` è l'icona di Renamr.exe e della finestra Windows; `renamr-icon.png` quella della finestra Linux.
+- Layout: in alto logo e versione, cartella aperta a destra; sotto, le due modalità e l'unico pulsante Impostazioni, sempre visibile; poi il contenuto e la barra azione.
