@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -5,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Renamr.App.Services;
 using Renamr.Core.Abstractions;
+using Renamr.Core.Localization;
 using Renamr.Presentation.Services;
 using Renamr.Presentation.ViewModels;
 using Renamr.Services;
@@ -56,8 +58,26 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Lingua dell'interfaccia: quella scelta nelle impostazioni, altrimenti quella di Windows (inglese se non c'è).
+        var uiLanguage = _host.Services.GetRequiredService<InterfaceSettingsStore>().Load().Language;
+        Strings.Current.SetLanguage(Strings.Resolve(uiLanguage, CultureInfo.CurrentUICulture));
+
         _window = _host.Services.GetRequiredService<MainWindow>();
         _host.Services.GetRequiredService<WindowContext>().Window = _window;
         _window.Activate();
+    }
+
+    /// <summary>Dopo un cambio di lingua: stessa posizione e dimensione, stesso ViewModel, testi nuovi.</summary>
+    public void ReplaceMainWindow(MainWindow old)
+    {
+        ArgumentNullException.ThrowIfNull(old);
+        var window = new MainWindow(old.ViewModel);
+        window.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
+            old.AppWindow.Position.X, old.AppWindow.Position.Y, old.AppWindow.Size.Width, old.AppWindow.Size.Height));
+        _window = window;
+        _host.Services.GetRequiredService<WindowContext>().Window = window;
+        window.Activate();
+        old.StopTracking();
+        old.Close();
     }
 }

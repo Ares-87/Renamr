@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using Renamr.Core.BatchRename;
 using Renamr.Core.Errors;
 using Renamr.Core.Models;
@@ -98,7 +99,7 @@ public sealed class BatchRenamePlanner
                 RenamrError? conflict = null;
                 if (!claimed.Add(target) && !self)
                 {
-                    conflict = new RenamrError(RenamrErrorCode.TargetAlreadyExists, "Lo stesso nome è già usato da un altro file dell'elenco");
+                    conflict = new RenamrError(RenamrErrorCode.TargetAlreadyExists, Strings.Current.BatchDuplicateTarget);
                 }
                 else if (!self && !moving.Contains(target) && (File.Exists(target) || Directory.Exists(target)))
                 {

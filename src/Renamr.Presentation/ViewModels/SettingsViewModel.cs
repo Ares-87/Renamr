@@ -1,12 +1,24 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Renamr.Core.Abstractions;
+using Renamr.Core.Localization;
 using Renamr.Core.Models;
 using Renamr.Core.Options;
+using Renamr.Services.Settings;
 
 namespace Renamr.Presentation.ViewModels;
 
-/// <summary>Finestra Impostazioni: template con anteprima dal vivo, chiavi API, soglia di confidenza.</summary>
+/// <summary>Una voce del selettore della lingua dell'interfaccia. Codice vuoto = lingua del sistema.</summary>
+public sealed record UiLanguageOption(string Code, string Label)
+{
+    public override string ToString() => Label;
+}
+
+/// <summary>
+/// Finestra Impostazioni: template con anteprima dal vivo, chiavi API, soglia di confidenza, lingua dell'interfaccia.
+/// Le sezioni dei film (formati, chiavi, riconoscimento) si vedono solo in modalità "Film, Serie e Musica".
+/// </summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private static readonly MediaMetadata SampleMovie = new()
@@ -40,13 +52,40 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private readonly ISettingsStore _store;
     private readonly INameTemplateEngine _engine;
+    private readonly InterfaceSettingsStore? _interface;
 
-    public SettingsViewModel(ISettingsStore store, INameTemplateEngine engine)
+    public SettingsViewModel(ISettingsStore store, INameTemplateEngine engine, InterfaceSettingsStore? interfaceStore = null)
     {
         _store = store;
         _engine = engine;
+        _interface = interfaceStore;
         Load(store.Current);
+
+        var system = Strings.Resolve(null, CultureInfo.CurrentUICulture);
+        UiLanguages =
+        [
+            new(string.Empty, Strings.Current.Format(nameof(Strings.SettingsUiLanguageSystem), Strings.NativeName(system))),
+            .. Strings.SupportedLanguages.Select(code => new UiLanguageOption(code, Strings.NativeName(code))),
+        ];
+        var saved = interfaceStore?.Load().Language ?? string.Empty;
+        UiLanguage = UiLanguages.FirstOrDefault(o => string.Equals(o.Code, saved, StringComparison.OrdinalIgnoreCase)) ?? UiLanguages[0];
     }
+
+    /// <summary>
+    /// Modalità attiva quando si aprono le impostazioni. In "Rinomina file" formati, chiavi API e riconoscimento
+    /// non servono e restano nascosti (i valori salvati non cambiano).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBatchMode))]
+    public partial bool IsMediaMode { get; set; } = true;
+
+    public bool IsBatchMode => !IsMediaMode;
+
+    /// <summary>Lingua del sistema e poi le lingue supportate, ognuna col suo nome.</summary>
+    public IReadOnlyList<UiLanguageOption> UiLanguages { get; }
+
+    [ObservableProperty]
+    public partial UiLanguageOption UiLanguage { get; set; }
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(MoviePreview))]
     public partial string MovieTemplate { get; set; } = string.Empty;
@@ -121,7 +160,20 @@ public sealed partial class SettingsViewModel : ObservableObject
             AudioExtensions = current.AudioExtensions,
             CompanionExtensions = current.CompanionExtensions,
         };
+        SaveInterfaceLanguage();
         return _store.SaveAsync(updated);
+    }
+
+    /// <summary>Salva la lingua dell'interfaccia e la applica subito: la finestra si ricrea con i nuovi testi.</summary>
+    private void SaveInterfaceLanguage()
+    {
+        if (_interface is null)
+        {
+            return; // senza archivio (test) la lingua dell'app non si tocca
+        }
+        var code = UiLanguage?.Code ?? string.Empty;
+        _interface.Save(new InterfaceSettings { Language = code });
+        Strings.Current.SetLanguage(Strings.Resolve(code, CultureInfo.CurrentUICulture));
     }
 
     [RelayCommand]
@@ -154,7 +206,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(pattern))
         {
-            return "Template vuoto";
+            return Strings.Current.TemplateEmpty;
         }
         try
         {
@@ -162,7 +214,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         catch (ArgumentException ex)
         {
-            return $"Template non valido: {ex.Message}";
+            return Strings.Current.Format(nameof(Strings.TemplateInvalid), ex.Message);
         }
     }
 

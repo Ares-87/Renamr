@@ -185,3 +185,18 @@ In alto nella finestra un selettore sceglie tra **Film e serie** (tutto quanto d
 - **Anteprima**: `BatchRenameEngine` è puro calcolo e `BatchRenamePlanner.Plan` riusa l'elenco già letto, quindi la tabella si aggiorna mentre si scrive (150 ms dopo l'ultimo tasto, righe aggiornate al loro posto). I nomi sono validati con le regole di Windows anche su Linux (i dischi esterni sono spesso NTFS).
 - **Conflitti**: due file non possono finire sullo stesso nome, e un file che resta com'è occupa il suo. Un file che verrà rinominato invece libera il nome: le rinumerazioni "1 ➔ 2, 2 ➔ 3" sono lecite. `BatchRenameExecutor` rinomina prima chi ha la destinazione libera (le catene si sciolgono da sole) e manda i cicli veri ("A ➔ B, B ➔ A") su un nome temporaneo `.renamr-…`. Ogni spostamento va nel journal, quindi Annulla funziona come per i film.
 - **Memoria**: regole, filtro, ordine e ultima modalità stanno in `batch-rename.json` accanto a `settings.json` (`BatchRenameStore`), separati dalle chiavi API cifrate.
+
+## 13. Lingua dell'interfaccia
+
+- Lingue: italiano, inglese, spagnolo, francese, tedesco, portoghese. I testi stanno in `Renamr.Core/Localization/*.json`
+  (incorporati nell'assembly); `Strings.Current` li espone come proprietà (`Strings.Keys.cs`, una riga per chiave).
+- All'avvio vale la lingua scelta in Impostazioni ➔ Interfaccia (`interface.json`, accanto a settings.json), altrimenti
+  quella del sistema, altrimenti l'inglese. È distinta dalla "lingua dei titoli" dei database.
+- Viste: in WinUI `{x:Bind loc:Strings.Current.Chiave}`, in Avalonia `{l:Tr Chiave}`. Si leggono una volta: cambiando
+  lingua la finestra si ricrea con lo stesso ViewModel (cartella, regole e anteprima restano).
+- Per aggiungere un testo: la chiave in tutti i file JSON e una riga in `Strings.Keys.cs`. `LocalizationTests` controlla
+  che le lingue abbiano le stesse chiavi e gli stessi segnaposto `{0}`, e che le viste usino solo chiavi esistenti.
+- I segnaposto dei modelli di "Rinomina file" si mostrano in italiano ({nome}, {cartella}…) o in inglese ({name}, {folder}…);
+  entrambi funzionano sempre.
+- In modalità "Rinomina file" le Impostazioni mostrano solo l'interfaccia: formati, chiavi API e riconoscimento riguardano
+  solo "Film, Serie e Musica".

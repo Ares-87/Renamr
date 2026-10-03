@@ -16,6 +16,7 @@ using Renamr.Services.Providers.Music;
 using Renamr.Services.Providers.Tmdb;
 using Renamr.Services.Providers.Tv;
 using Renamr.Services.Resilience;
+using Renamr.Services.Settings;
 
 namespace Renamr.Services;
 
@@ -72,6 +73,7 @@ public static class ServiceCollectionExtensions
         // Modalità "Rinomina file": qualunque file, solo il nome.
         services.AddSingleton<BatchRenamePlanner>();
         services.AddSingleton<BatchRenameStore>();
+        services.AddSingleton<InterfaceSettingsStore>();
         services.AddTransient<BatchRenameExecutor>();
         return services;
     }

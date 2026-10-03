@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -83,10 +84,13 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
             // l'obiettivo è raggiunto e non serve disturbare l'utente con un avviso per ogni file.
             if (headerProblem is not null || metadata.ReleaseDate is null)
             {
-                var why = length > CopyOnWriteMaxBytes ? "file oltre 4 GB" : "spazio libero insufficiente per la copia di sicurezza";
+                var s = Strings.Current;
+                var why = length > CopyOnWriteMaxBytes ? s.MetadataSkippedLarge : s.MetadataSkippedSpace;
                 warnings.Add(new RenamrError(RenamrErrorCode.MetadataSkippedLargeFile,
-                    length > CopyOnWriteMaxBytes ? ErrorMessages.Describe(RenamrErrorCode.MetadataSkippedLargeFile) : "Metadati interni non scritti: spazio insufficiente",
-                    $"{why}; restano le date del file{(headerProblem is null ? "" : $" (data nell'intestazione: {headerProblem})")}"));
+                    length > CopyOnWriteMaxBytes ? ErrorMessages.Describe(RenamrErrorCode.MetadataSkippedLargeFile) : s.MetadataSkippedNoSpace,
+                    headerProblem is null
+                        ? s.Format(nameof(Strings.MetadataSkippedDetail), why)
+                        : s.Format(nameof(Strings.MetadataSkippedHeader), why, headerProblem)));
             }
         }
 
@@ -113,7 +117,7 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
 
             return dateWritten || metadata.ReleaseDate is null
                 ? OperationResult.Ok()
-                : OperationResult.Ok([RenamrError.From(RenamrErrorCode.MetadataFormatUnsupported, "Salvato solo l'anno")]);
+                : OperationResult.Ok([RenamrError.From(RenamrErrorCode.MetadataFormatUnsupported, Strings.Current.MetadataYearOnly)]);
         }
         catch (Exception ex) when (ex is UnsupportedFormatException or CorruptFileException)
         {

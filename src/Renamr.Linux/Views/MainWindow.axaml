@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:Renamr.Linux.Helpers"
         xmlns:vm="using:Renamr.Presentation.ViewModels"
         xmlns:ui="using:Renamr.Linux.Helpers"
         xmlns:ctl="using:FluentAvalonia.UI.Controls"
@@ -55,15 +56,15 @@
         <DataTemplate x:Key="RuleHeader" x:DataType="vm:BatchRuleViewModel">
             <StackPanel Spacing="2">
                 <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="2">
-                    <CheckBox IsChecked="{Binding Enabled}" MinWidth="0" Padding="4,0,0,0" ToolTip.Tip="Attiva o spegni questa regola" />
+                    <CheckBox IsChecked="{Binding Enabled}" MinWidth="0" Padding="4,0,0,0" ToolTip.Tip="{l:Tr RuleToggleTip}" />
                     <TextBlock Grid.Column="1" Text="{Binding Header}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Button Grid.Column="2" Classes="icon" Command="{Binding MoveUpCommand}" ToolTip.Tip="Sposta su">
+                    <Button Grid.Column="2" Classes="icon" Command="{Binding MoveUpCommand}" ToolTip.Tip="{l:Tr RuleMoveUp}">
                         <ctl:FASymbolIcon Symbol="ChevronUp" FontSize="12" />
                     </Button>
-                    <Button Grid.Column="3" Classes="icon" Command="{Binding MoveDownCommand}" ToolTip.Tip="Sposta giù">
+                    <Button Grid.Column="3" Classes="icon" Command="{Binding MoveDownCommand}" ToolTip.Tip="{l:Tr RuleMoveDown}">
                         <ctl:FASymbolIcon Symbol="ChevronDown" FontSize="12" />
                     </Button>
-                    <Button Grid.Column="4" Classes="icon" Command="{Binding RemoveCommand}" ToolTip.Tip="Togli la regola">
+                    <Button Grid.Column="4" Classes="icon" Command="{Binding RemoveCommand}" ToolTip.Tip="{l:Tr RuleRemove}">
                         <ctl:FASymbolIcon Symbol="Dismiss" FontSize="12" />
                     </Button>
                 </Grid>
@@ -88,11 +89,11 @@
         </Grid>
 
         <!-- ═══ Modalità: film e serie (riconoscimento online) oppure qualunque file con regole ═══ -->
-        <TabStrip Grid.Row="1" Margin="20,0,24,0" Classes="mode"
-                  SelectedIndex="{Binding ModeIndex}"
+        <!-- La scelta si collega nel code-behind dopo il caricamento: così ricreare la finestra (cambio di lingua) non cambia modalità. -->
+        <TabStrip x:Name="ModeTabs" Grid.Row="1" Margin="20,0,24,0" Classes="mode"
                   IsEnabled="{Binding !IsBusy}">
-            <TabStripItem Content="Film e serie" ToolTip.Tip="Riconosce film, serie TV, anime e musica nei database online, con metadati e date di uscita" />
-            <TabStripItem Content="Rinomina file" ToolTip.Tip="Qualunque file: numerazione, sostituzioni, maiuscole e altre regole. Cambia solo il nome" />
+            <TabStripItem Content="{l:Tr ModeMedia}" ToolTip.Tip="{l:Tr ModeMediaTip}" />
+            <TabStripItem Content="{l:Tr ModeBatch}" ToolTip.Tip="{l:Tr ModeBatchTip}" />
         </TabStrip>
 
         <!-- ═══ FASE 1 · Selezione & Drag-and-Drop ═══ -->
@@ -117,16 +118,23 @@
                         Command="{Binding PickFolderCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <ctl:FASymbolIcon Symbol="OpenFolder" FontSize="16" />
-                        <TextBlock Text="Scegli cartella…" />
+                        <TextBlock Text="{l:Tr PickFolder}" />
                     </StackPanel>
                 </Button>
                 <StackPanel Margin="0,8,0,0" HorizontalAlignment="Center" Spacing="4" IsVisible="{Binding IsMediaMode}">
-                    <TextBlock Text="Lingua dei titoli" />
+                    <TextBlock Text="{l:Tr TitleLanguage}" />
                     <ComboBox MinWidth="200"
                               ItemsSource="{Binding Languages}"
                               SelectedItem="{Binding SelectedLanguage}"
                               DisplayMemberBinding="{Binding Label, x:DataType=vm:LanguageOption}" />
                 </StackPanel>
+                <!-- Le impostazioni anche prima di aprire una cartella (lingua dell'interfaccia, chiavi API). -->
+                <HyperlinkButton HorizontalAlignment="Center" Click="Settings_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <ctl:FASymbolIcon Symbol="Settings" FontSize="14" />
+                        <TextBlock Text="{l:Tr Settings}" />
+                    </StackPanel>
+                </HyperlinkButton>
             </StackPanel>
         </Grid>
 
@@ -138,27 +146,27 @@
             <ScrollViewer Width="340" Margin="0,0,16,0" IsVisible="{Binding IsBatchMode}" IsEnabled="{Binding !IsBusy}"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="12" Margin="0,0,12,12" DataContext="{Binding Batch}" x:DataType="vm:BatchRenameViewModel">
-                    <TextBlock Text="File" Theme="{StaticResource BodyStrongTextBlockStyle}" />
-                    <TextBox Text="{Binding Filter}" PlaceholderText="Tutti i file (es. *.jpg; *.png)"
-                             ToolTip.Tip="Quali file rinominare: estensioni (jpg png) o modelli con * e ? (IMG_*). Vuoto = tutti" />
-                    <CheckBox Content="Includi le sottocartelle" IsChecked="{Binding IncludeSubfolders}" />
+                    <TextBlock Text="{l:Tr BatchFiles}" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBox Text="{Binding Filter}" PlaceholderText="{l:Tr BatchFilterPlaceholder}"
+                             ToolTip.Tip="{l:Tr BatchFilterTip}" />
+                    <CheckBox Content="{l:Tr IncludeSubfolders}" IsChecked="{Binding IncludeSubfolders}" />
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                        <TextBlock Text="Ordine" VerticalAlignment="Center" />
+                        <TextBlock Text="{l:Tr SortOrder}" VerticalAlignment="Center" />
                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
                                   ItemsSource="{x:Static vm:BatchRenameViewModel.SortOptions}"
                                   SelectedIndex="{Binding SortByIndex}"
-                                  ToolTip.Tip="L'ordine in cui i file vengono numerati" />
-                        <CheckBox Grid.Column="2" Content="Inverso" IsChecked="{Binding Descending}" />
+                                  ToolTip.Tip="{l:Tr SortOrderTip}" />
+                        <CheckBox Grid.Column="2" Content="{l:Tr SortDescending}" IsChecked="{Binding Descending}" />
                     </Grid>
 
                     <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                        <TextBlock Text="Regole" Theme="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                        <TextBlock Text="{l:Tr Rules}" Theme="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
                         <Button Grid.Column="1" Classes="icon" Command="{Binding ClearRulesCommand}" IsVisible="{Binding HasRules}"
-                                ToolTip.Tip="Togli tutte le regole">
+                                ToolTip.Tip="{l:Tr ClearRules}">
                             <ctl:FASymbolIcon Symbol="Delete" FontSize="14" />
                         </Button>
                     </Grid>
-                    <TextBlock Text="Nessuna regola: aggiungine una per vedere i nuovi nomi."
+                    <TextBlock Text="{l:Tr NoRules}"
                                IsVisible="{Binding !HasRules}" TextWrapping="Wrap"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
 
@@ -175,16 +183,16 @@
                                             <ComboBox Grid.ColumnSpan="2" HorizontalAlignment="Stretch"
                                                       ItemsSource="{x:Static vm:NumberingRuleViewModel.Positions}"
                                                       SelectedIndex="{Binding PositionIndex}" />
-                                            <ctl:FANumberBox Grid.Row="1" Header="Da" Value="{Binding Start, Mode=TwoWay}" SpinButtonPlacementMode="Compact" />
-                                            <ctl:FANumberBox Grid.Row="1" Grid.Column="1" Header="Passo" Value="{Binding Step, Mode=TwoWay}" SpinButtonPlacementMode="Compact" />
-                                            <ctl:FANumberBox Grid.Row="2" Header="Cifre" Value="{Binding Digits, Mode=TwoWay}" Minimum="0" Maximum="12" SpinButtonPlacementMode="Compact"
-                                                             ToolTip.Tip="Zeri iniziali: 3 = 001. Con 0 bastano le cifre del numero più alto" />
+                                            <ctl:FANumberBox Grid.Row="1" Header="{l:Tr NumberingFrom}" Value="{Binding Start, Mode=TwoWay}" SpinButtonPlacementMode="Compact" />
+                                            <ctl:FANumberBox Grid.Row="1" Grid.Column="1" Header="{l:Tr NumberingStep}" Value="{Binding Step, Mode=TwoWay}" SpinButtonPlacementMode="Compact" />
+                                            <ctl:FANumberBox Grid.Row="2" Header="{l:Tr NumberingDigits}" Value="{Binding Digits, Mode=TwoWay}" Minimum="0" Maximum="12" SpinButtonPlacementMode="Compact"
+                                                             ToolTip.Tip="{l:Tr NumberingDigitsTip}" />
                                             <StackPanel Grid.Row="2" Grid.Column="1" Spacing="4">
-                                                <TextBlock Text="Separatore" />
+                                                <TextBlock Text="{l:Tr NumberingSeparator}" />
                                                 <TextBox Text="{Binding Separator}" />
                                             </StackPanel>
                                         </Grid>
-                                        <CheckBox Content="Ricomincia in ogni cartella" IsChecked="{Binding RestartInEachFolder}" />
+                                        <CheckBox Content="{l:Tr NumberingRestart}" IsChecked="{Binding RestartInEachFolder}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -192,7 +200,7 @@
                                 <Border Classes="ruleCard">
                                     <StackPanel Spacing="8">
                                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
-                                        <TextBox Text="{Binding Pattern}" PlaceholderText="Vacanze {n:000}" />
+                                        <TextBox Text="{Binding Pattern}" PlaceholderText="{l:Tr NewNamePlaceholder}" />
                                         <TextBlock Text="{x:Static vm:NewNameRuleViewModel.TokensHelp}" Classes="caption" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                                     </StackPanel>
@@ -202,11 +210,11 @@
                                 <Border Classes="ruleCard">
                                     <StackPanel Spacing="8">
                                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
-                                        <TextBox Text="{Binding Find}" PlaceholderText="Cerca" />
-                                        <TextBox Text="{Binding Replacement}" PlaceholderText="Sostituisci con (vuoto = togli)" />
+                                        <TextBox Text="{Binding Find}" PlaceholderText="{l:Tr ReplaceFind}" />
+                                        <TextBox Text="{Binding Replacement}" PlaceholderText="{l:Tr ReplaceWith}" />
                                         <WrapPanel ItemSpacing="16">
-                                            <CheckBox Content="Maiuscole esatte" IsChecked="{Binding MatchCase}" />
-                                            <CheckBox Content="Espressione regolare" IsChecked="{Binding UseRegex}" />
+                                            <CheckBox Content="{l:Tr MatchCase}" IsChecked="{Binding MatchCase}" />
+                                            <CheckBox Content="{l:Tr UseRegex}" IsChecked="{Binding UseRegex}" />
                                         </WrapPanel>
                                         <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" Classes="caption" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
@@ -217,7 +225,7 @@
                                 <Border Classes="ruleCard">
                                     <StackPanel Spacing="8">
                                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
-                                        <TextBox Text="{Binding Text}" PlaceholderText="Testo (anche {data}, {cartella}…)" />
+                                        <TextBox Text="{Binding Text}" PlaceholderText="{l:Tr InsertPlaceholder}" />
                                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                             <ComboBox HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
                                                       ItemsSource="{x:Static vm:InsertTextRuleViewModel.Positions}"
@@ -236,8 +244,8 @@
                                                   ItemsSource="{x:Static vm:RemoveCharactersRuleViewModel.Modes}"
                                                   SelectedIndex="{Binding ModeIndex}" />
                                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                                            <ctl:FANumberBox Header="Quanti" Value="{Binding Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact" />
-                                            <ctl:FANumberBox Grid.Column="1" Header="Dalla posizione" Value="{Binding From, Mode=TwoWay}" Minimum="1"
+                                            <ctl:FANumberBox Header="{l:Tr RemoveCount}" Value="{Binding Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact" />
+                                            <ctl:FANumberBox Grid.Column="1" Header="{l:Tr RemoveFrom}" Value="{Binding From, Mode=TwoWay}" Minimum="1"
                                                              SpinButtonPlacementMode="Compact" IsVisible="{Binding IsRange}" />
                                         </Grid>
                                     </StackPanel>
@@ -257,10 +265,10 @@
                                 <Border Classes="ruleCard">
                                     <StackPanel Spacing="4">
                                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
-                                        <CheckBox Content="Punti e trattini bassi diventano spazi" IsChecked="{Binding SeparatorsToSpaces}" />
-                                        <CheckBox Content="Togli il testo tra parentesi" IsChecked="{Binding RemoveBracketed}" />
-                                        <CheckBox Content="Togli gli accenti" IsChecked="{Binding RemoveAccents}" />
-                                        <CheckBox Content="Togli i numeri" IsChecked="{Binding RemoveDigits}" />
+                                        <CheckBox Content="{l:Tr CleanupSeparators}" IsChecked="{Binding SeparatorsToSpaces}" />
+                                        <CheckBox Content="{l:Tr CleanupBrackets}" IsChecked="{Binding RemoveBracketed}" />
+                                        <CheckBox Content="{l:Tr CleanupAccents}" IsChecked="{Binding RemoveAccents}" />
+                                        <CheckBox Content="{l:Tr CleanupDigits}" IsChecked="{Binding RemoveDigits}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -281,7 +289,7 @@
                     <Button x:Name="AddRuleButton" HorizontalAlignment="Stretch" Click="AddRule_Click">
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                             <ctl:FASymbolIcon Symbol="Add" FontSize="14" />
-                            <TextBlock Text="Aggiungi regola" />
+                            <TextBlock Text="{l:Tr AddRule}" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -292,13 +300,13 @@
             <!-- Riepilogo a pillole: niente toolbar, solo informazione -->
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Border Classes="badge success">
-                    <TextBlock><Run Text="Pronti" /> <Run Text="{Binding ReadyCount}" /></TextBlock>
+                    <TextBlock><Run Text="{l:Tr BadgeReady}" /> <Run Text="{Binding ReadyCount}" /></TextBlock>
                 </Border>
                 <Border Classes="badge caution" IsVisible="{Binding IsMediaMode}">
-                    <TextBlock><Run Text="Bassa confidenza" /> <Run Text="{Binding LowConfidenceCount}" /></TextBlock>
+                    <TextBlock><Run Text="{l:Tr BadgeLowConfidence}" /> <Run Text="{Binding LowConfidenceCount}" /></TextBlock>
                 </Border>
                 <Border Classes="badge critical">
-                    <TextBlock><Run Text="Errori" /> <Run Text="{Binding ErrorCount}" /></TextBlock>
+                    <TextBlock><Run Text="{l:Tr BadgeErrors}" /> <Run Text="{Binding ErrorCount}" /></TextBlock>
                 </Border>
             </StackPanel>
 
@@ -309,7 +317,7 @@
                            Message="{Binding SummaryMessage}"
                            Severity="{Binding SummaryHasErrors, Converter={x:Static ui:Ui.Severity}}">
                 <ctl:FAInfoBar.ActionButton>
-                    <Button Content="Annulla ridenominazione"
+                    <Button Content="{l:Tr UndoRename}"
                             Command="{Binding UndoCommand}"
                             IsVisible="{Binding CanUndo}" />
                 </ctl:FAInfoBar.ActionButton>
@@ -318,24 +326,24 @@
             <!-- Perché alcuni titoli restano in inglese, e quali date questo disco permette di cambiare -->
             <StackPanel Grid.Row="2" Spacing="8">
                 <ctl:FAInfoBar Severity="Warning"
-                               Title="Un database ha dato errore"
+                               Title="{l:Tr ProviderWarningTitle}"
                                IsOpen="{Binding IsProviderWarningOpen}"
                                Message="{Binding ProviderWarning}" />
                 <ctl:FAInfoBar Severity="Informational"
-                               Title="Titoli tradotti"
+                               Title="{l:Tr TranslatedTitlesTitle}"
                                IsOpen="{Binding IsLanguageHintOpen}"
                                Message="{Binding LanguageHint}" />
                 <ctl:FAInfoBar x:Name="DateHintBar"
                                Severity="Informational"
-                               Title="Data di creazione"
+                               Title="{l:Tr CreationDateTitle}"
                                IsOpen="False" />
             </StackPanel>
 
             <!-- Intestazione colonne -->
             <Grid Grid.Row="3" Margin="16,0" ColumnDefinitions="140,*,24,*" ColumnSpacing="12">
-                <TextBlock Text="Stato" Classes="columnHeader" />
-                <TextBlock Grid.Column="1" Text="Nome originale" Classes="columnHeader" />
-                <TextBlock Grid.Column="3" Text="Nuovo nome proposto" Classes="columnHeader" />
+                <TextBlock Text="{l:Tr ColumnStatus}" Classes="columnHeader" />
+                <TextBlock Grid.Column="1" Text="{l:Tr ColumnOriginal}" Classes="columnHeader" />
+                <TextBlock Grid.Column="3" Text="{l:Tr ColumnProposed}" Classes="columnHeader" />
             </Grid>
 
             <!-- Tabella a due colonne: Originale ➔ Proposto. ListBox virtualizzata: regge decine di migliaia di righe. -->
@@ -411,7 +419,7 @@
             <Expander.Header>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <ctl:FASymbolIcon Symbol="Important" FontSize="16" Foreground="{DynamicResource SystemFillColorCautionBrush}" />
-                    <TextBlock Text="Errori e avvisi" FontWeight="SemiBold" />
+                    <TextBlock Text="{l:Tr IssuesTitle}" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding Issues.Header}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </Expander.Header>
@@ -450,25 +458,25 @@
                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" ItemSpacing="24" LineSpacing="8"
                            IsVisible="{Binding !IsBusy}">
                     <ToggleSwitch IsChecked="{Binding IsDryRun}"
-                                  OnContent="Simulazione (Dry Run)"
-                                  OffContent="Simulazione (Dry Run)"
-                                  ToolTip.Tip="Prova generale: controlla permessi, file bloccati e conflitti senza modificare alcun file" />
+                                  OnContent="{l:Tr DryRun}"
+                                  OffContent="{l:Tr DryRun}"
+                                  ToolTip.Tip="{l:Tr DryRunTip}" />
                     <ComboBox ItemsSource="{Binding Languages}"
                               SelectedItem="{Binding SelectedLanguage}"
                               DisplayMemberBinding="{Binding Label, x:DataType=vm:LanguageOption}"
                               IsVisible="{Binding IsMediaMode}"
                               MinWidth="130"
                               VerticalAlignment="Center"
-                              ToolTip.Tip="Lingua dei titoli: cambiandola le ricerche ripartono subito" />
-                    <CheckBox Content="Scrivi metadati interni"
+                              ToolTip.Tip="{l:Tr TitleLanguageTip}" />
+                    <CheckBox Content="{l:Tr WriteMetadata}"
                               IsChecked="{Binding WriteEmbeddedMetadata}"
                               IsVisible="{Binding IsMediaMode}"
-                              ToolTip.Tip="Scrive titolo, episodio e data anche dentro i file (tag MKV/MP4/MP3). Se è spento Renamr cambia solo il nome e le date del file." />
+                              ToolTip.Tip="{l:Tr WriteMetadataTip}" />
                     <CheckBox IsChecked="{Binding IncludeLowConfidence}"
                               IsVisible="{Binding IsMediaMode}"
-                              ToolTip.Tip="Rinomina anche i file riconosciuti con poca sicurezza (righe gialle). Controllali prima nell'anteprima.">
+                              ToolTip.Tip="{l:Tr IncludeLowConfidenceTip}">
                         <TextBlock>
-                            <Run Text="Includi bassa confidenza" />
+                            <Run Text="{l:Tr IncludeLowConfidence}" />
                             <Run Text="(" /><Run Text="{Binding LowConfidenceCount}" /><Run Text=")" />
                         </TextBlock>
                     </CheckBox>
@@ -496,11 +504,11 @@
 
                 <!-- Pulsanti: uno primario, il resto discreto -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Button Command="{Binding CancelCommand}" Content="Annulla" IsVisible="{Binding IsBusy}" />
-                    <Button Click="Settings_Click" ToolTip.Tip="Impostazioni" IsVisible="{Binding !IsBusy}">
+                    <Button Command="{Binding CancelCommand}" Content="{l:Tr Cancel}" IsVisible="{Binding IsBusy}" />
+                    <Button Click="Settings_Click" ToolTip.Tip="{l:Tr Settings}" IsVisible="{Binding !IsBusy}">
                         <ctl:FASymbolIcon Symbol="Settings" FontSize="16" />
                     </Button>
-                    <Button Content="Cambia cartella" Command="{Binding ResetCommand}" IsVisible="{Binding !IsBusy}" />
+                    <Button Content="{l:Tr ChangeFolder}" Command="{Binding ResetCommand}" IsVisible="{Binding !IsBusy}" />
                     <Button Classes="accent" Command="{Binding RunCommand}" MinWidth="220" IsVisible="{Binding !IsBusy}">
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                             <ctl:FASymbolIcon Symbol="Rename" FontSize="16" />

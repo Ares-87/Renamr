@@ -194,6 +194,27 @@ public class BatchRenamePipelineTests : IDisposable
     });
 
     [Fact]
+    public void Saving_settings_in_batch_mode_keeps_the_rule_preview() => UiThread.Run(async () =>
+    {
+        _lib.File("IMG_0001.jpg");
+        _lib.File("The.Matrix.1999.1080p.mkv");
+        using var sp = Services();
+        var vm = sp.GetRequiredService<MainViewModel>();
+        vm.BatchPreviewDelay = TimeSpan.FromHours(1);
+        vm.IsBatchMode = true;
+        await vm.PickFolderCommand.ExecuteAsync(null);
+        vm.Batch.ClearRulesCommand.Execute(null);
+        vm.Batch.AddRuleCommand.Execute("numerazione");
+        await vm.RefreshBatchPreviewAsync();
+        Assert.Equal(2, vm.ReadyCount);
+
+        // Prima il Salva delle impostazioni ricalcolava i nomi con i template dei film anche qui.
+        await vm.SettingsSavedCommand.ExecuteAsync(vm.CurrentLanguage);
+        Assert.Equal(["IMG_0001 1.jpg", "The.Matrix.1999.1080p 2.mkv"], vm.Items.Select(i => i.ProposedName));
+        Assert.Equal(2, vm.ReadyCount);
+    });
+
+    [Fact]
     public void Moving_and_removing_rules_renumbers_them()
     {
         var batch = new BatchRenameViewModel(new BatchRenameOptions());

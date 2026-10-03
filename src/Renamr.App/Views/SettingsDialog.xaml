@@ -3,9 +3,10 @@
     x:Class="Renamr.App.Views.SettingsDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Impostazioni"
-    PrimaryButtonText="Salva"
-    CloseButtonText="Annulla"
+    xmlns:loc="using:Renamr.Core.Localization"
+    Title="{x:Bind loc:Strings.Current.Settings}"
+    PrimaryButtonText="{x:Bind loc:Strings.Current.Save}"
+    CloseButtonText="{x:Bind loc:Strings.Current.Cancel}"
     DefaultButton="Primary"
     PrimaryButtonCommand="{x:Bind ViewModel.SaveCommand}"
     Style="{StaticResource DefaultContentDialogStyle}">
@@ -22,36 +23,41 @@
     <ScrollViewer MaxHeight="560" Padding="0,0,16,0">
         <StackPanel Spacing="20" MinWidth="560">
 
+            <!-- In "Rinomina file" formati, chiavi API e riconoscimento non servono: si vedono solo in "Film, Serie e Musica". -->
+            <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="{x:Bind loc:Strings.Current.SettingsBatchHint}"
+                       Visibility="{x:Bind ViewModel.IsBatchMode}" />
+
             <!-- Template con anteprima dal vivo -->
-            <StackPanel Spacing="10">
-                <TextBlock Text="Formato dei nomi" Style="{StaticResource BodyStrongTextBlockStyle}" />
+            <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.IsMediaMode}">
+                <TextBlock Text="{x:Bind loc:Strings.Current.SettingsNameFormats}" Style="{StaticResource BodyStrongTextBlockStyle}" />
                 <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Text="Segnaposto: {Title} {Year} {Resolution} {Show Title} {Season:00} {Episode:00} {Episode Title} {Absolute:000} {Artist} {Album} {Track:00}. Usa / per organizzare in cartelle." />
+                           Text="{x:Bind loc:Strings.Current.SettingsPlaceholders}" />
 
                 <StackPanel>
-                    <TextBox Header="Film" Text="{x:Bind ViewModel.MovieTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Header="{x:Bind loc:Strings.Current.FormatMovie}" Text="{x:Bind ViewModel.MovieTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Text="{x:Bind ViewModel.MoviePreview, Mode=OneWay}" Style="{StaticResource PreviewTextStyle}" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBox Header="Serie TV" Text="{x:Bind ViewModel.EpisodeTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Header="{x:Bind loc:Strings.Current.FormatEpisode}" Text="{x:Bind ViewModel.EpisodeTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Text="{x:Bind ViewModel.EpisodePreview, Mode=OneWay}" Style="{StaticResource PreviewTextStyle}" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBox Header="Anime (numerazione assoluta)" Text="{x:Bind ViewModel.AnimeTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Header="{x:Bind loc:Strings.Current.FormatAnime}" Text="{x:Bind ViewModel.AnimeTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Text="{x:Bind ViewModel.AnimePreview, Mode=OneWay}" Style="{StaticResource PreviewTextStyle}" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBox Header="Musica" Text="{x:Bind ViewModel.MusicTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Header="{x:Bind loc:Strings.Current.FormatMusic}" Text="{x:Bind ViewModel.MusicTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Text="{x:Bind ViewModel.MusicPreview, Mode=OneWay}" Style="{StaticResource PreviewTextStyle}" />
                 </StackPanel>
-                <HyperlinkButton Content="Ripristina formati predefiniti" Command="{x:Bind ViewModel.RestoreDefaultTemplatesCommand}" Padding="0" />
+                <HyperlinkButton Content="{x:Bind loc:Strings.Current.RestoreFormats}" Command="{x:Bind ViewModel.RestoreDefaultTemplatesCommand}" Padding="0" />
             </StackPanel>
 
             <!-- Database online -->
-            <StackPanel Spacing="10">
-                <TextBlock Text="Database online" Style="{StaticResource BodyStrongTextBlockStyle}" />
+            <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.IsMediaMode}">
+                <TextBlock Text="{x:Bind loc:Strings.Current.SettingsDatabases}" Style="{StaticResource BodyStrongTextBlockStyle}" />
                 <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Text="Le chiavi sono cifrate con il tuo account Windows. TVmaze e MusicBrainz funzionano senza chiave; i provider senza chiave vengono saltati." />
+                           Text="{x:Bind loc:Strings.Current.SettingsKeysHintWindows}" />
                 <PasswordBox Header="TheMovieDB (API key v3)" Password="{x:Bind ViewModel.TmdbApiKey, Mode=TwoWay}" />
                 <PasswordBox Header="OMDb (API key)" Password="{x:Bind ViewModel.OmdbApiKey, Mode=TwoWay}" />
                 <Grid ColumnSpacing="12">
@@ -60,21 +66,31 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <PasswordBox Header="TheTVDB (API key v4)" Password="{x:Bind ViewModel.TheTvdbApiKey, Mode=TwoWay}" />
-                    <PasswordBox Grid.Column="1" Header="PIN abbonato (opz.)" Password="{x:Bind ViewModel.TheTvdbPin, Mode=TwoWay}" />
+                    <PasswordBox Grid.Column="1" Header="{x:Bind loc:Strings.Current.SettingsTvdbPin}" Password="{x:Bind ViewModel.TheTvdbPin, Mode=TwoWay}" />
                 </Grid>
                 <PasswordBox Header="AcoustID (client key)" Password="{x:Bind ViewModel.AcoustIdClientKey, Mode=TwoWay}" />
-                <TextBox Header="AniDB (nome client registrato)" Text="{x:Bind ViewModel.AniDbClientName, Mode=TwoWay}" />
+                <TextBox Header="{x:Bind loc:Strings.Current.SettingsAniDbClient}" Text="{x:Bind ViewModel.AniDbClientName, Mode=TwoWay}" />
             </StackPanel>
 
             <!-- Riconoscimento -->
-            <StackPanel Spacing="10">
-                <TextBlock Text="Riconoscimento" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                <Slider Header="Confidenza minima per lo stato &quot;Pronto&quot; (%)"
+            <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.IsMediaMode}">
+                <TextBlock Text="{x:Bind loc:Strings.Current.SettingsRecognition}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <Slider Header="{x:Bind loc:Strings.Current.SettingsMinConfidence}"
                         Minimum="50" Maximum="99" StepFrequency="1" TickFrequency="5" TickPlacement="Outside"
                         Value="{x:Bind ViewModel.HighConfidencePercent, Mode=TwoWay}" />
-                <ComboBox Header="Lingua dei titoli"
+                <ComboBox Header="{x:Bind loc:Strings.Current.TitleLanguage}"
                           ItemsSource="{x:Bind ViewModel.Languages}"
                           SelectedItem="{x:Bind ViewModel.Language, Mode=TwoWay}"
+                          MinWidth="200" />
+            </StackPanel>
+
+            <!-- Interfaccia: sempre visibile, in tutte e due le modalità -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="{x:Bind loc:Strings.Current.SettingsInterface}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <ComboBox Header="{x:Bind loc:Strings.Current.SettingsUiLanguage}"
+                          ItemsSource="{x:Bind ViewModel.UiLanguages}"
+                          SelectedItem="{x:Bind ViewModel.UiLanguage, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
                           MinWidth="200" />
             </StackPanel>
         </StackPanel>

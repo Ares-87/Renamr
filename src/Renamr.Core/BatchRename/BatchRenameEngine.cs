@@ -1,3 +1,4 @@
+using Renamr.Core.Localization;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -117,29 +118,29 @@ public static partial class BatchRenameEngine
         return results;
     }
 
-    /// <summary>Null se <paramref name="name"/> è un nome di file valido su Windows e Linux; altrimenti il motivo, in italiano.</summary>
+    /// <summary>Null se <paramref name="name"/> è un nome di file valido su Windows e Linux; altrimenti il motivo, nella lingua dell'interfaccia.</summary>
     public static string? ValidateName(string stem, string name)
     {
         if (string.IsNullOrWhiteSpace(stem))
         {
-            return "Il nome è vuoto";
+            return Strings.Current.NameEmpty;
         }
         var bad = name.FirstOrDefault(c => c < 32 || c is '<' or '>' or ':' or '"' or '/' or '\\' or '|' or '?' or '*');
         if (bad != default)
         {
-            return bad < 32 ? "Il nome contiene un carattere di controllo" : $"Il carattere {bad} non è ammesso nei nomi dei file";
+            return bad < 32 ? Strings.Current.NameControlCharacter : Strings.Current.Format(nameof(Strings.NameBadCharacter), bad);
         }
         if (name.EndsWith('.') || name.EndsWith(' '))
         {
-            return "Il nome non può finire con un punto o uno spazio";
+            return Strings.Current.NameTrailingDot;
         }
         if (ReservedNames.Contains(name.Split('.')[0].TrimEnd()))
         {
-            return "Nome riservato da Windows";
+            return Strings.Current.NameReserved;
         }
         if (name.Length > MaxNameLength)
         {
-            return $"Nome troppo lungo ({name.Length} caratteri, massimo {MaxNameLength})";
+            return Strings.Current.Format(nameof(Strings.NameTooLong), name.Length, MaxNameLength);
         }
         return null;
     }

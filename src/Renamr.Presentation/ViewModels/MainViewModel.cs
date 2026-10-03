@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Renamr.Core.Abstractions;
 using Renamr.Core.BatchRename;
 using Renamr.Core.Errors;
+using Renamr.Core.Localization;
 using Renamr.Core.Models;
 using Renamr.Core.Options;
 using Renamr.Core.Templating;
@@ -36,6 +37,8 @@ public sealed partial class MainViewModel : ObservableObject
     private IReadOnlyList<BatchFile> _batchFiles = [];
     private int _batchRefreshVersion;
     private bool _pendingRescan;
+    private (int Ok, int Failed, int Warnings, bool DryRun)? _lastSummary;
+    private KeyValuePair<string, RenamrError>[] _lastFailures = [];
 
     public MainViewModel(IServiceProvider services, IFolderPickerService folderPicker, IMessenger messenger, IssuesViewModel issues)
     {
@@ -53,7 +56,10 @@ public sealed partial class MainViewModel : ObservableObject
         _syncingFromSettings = false;
 
         SyncFromSettings();
+        Strings.Current.PropertyChanged += (_, _) => RefreshTexts();
     }
+
+    private static Strings S => Strings.Current;
 
     public IssuesViewModel Issues { get; }
 
@@ -80,11 +86,9 @@ public sealed partial class MainViewModel : ObservableObject
         set => IsBatchMode = value == 1;
     }
 
-    public string DropZoneTitle => IsBatchMode ? "Trascina qui una cartella" : "Trascina qui la cartella della tua libreria";
+    public string DropZoneTitle => IsBatchMode ? S.DropTitleBatch : S.DropTitleMedia;
 
-    public string DropZoneHint => IsBatchMode
-        ? "Qualunque tipo di file: foto, documenti, musica. Scegli le regole e guarda subito i nuovi nomi. Nulla viene modificato finché non confermi."
-        : "Film, serie TV, anime e musica vengono riconosciuti automaticamente. Nulla viene modificato finché non confermi.";
+    public string DropZoneHint => IsBatchMode ? S.DropHintBatch : S.DropHintMedia;
 
     /// <summary>"Renamr v1.1.0": accanto al nome, per capire al volo se si sta usando l'ultima revisione.</summary>
     public string AppTitle => AppInfo.Title;
@@ -193,7 +197,7 @@ public sealed partial class MainViewModel : ObservableObject
     public int ActionableCount => ReadyCount + (IncludeLowConfidence ? LowConfidenceCount : 0);
     public string ProgressText => $"{Processed} / {Total}";
     public double ProgressValue => Total == 0 ? 0 : 100.0 * Processed / Total;
-    public string PrimaryActionText => IsDryRun ? "Avvia Simulazione" : "Avvia Ridenominazione";
+    public string PrimaryActionText => IsDryRun ? S.StartDryRun : S.StartRename;
 
     // ---- Fase 1: selezione ------------------------------------------------------------------
 
@@ -232,6 +236,7 @@ public sealed partial class MainViewModel : ObservableObject
         health?.Reset();
         ProviderWarning = null;
         IsProviderWarningOpen = false;
+        _lastFailures = [];
         try
         {
             IReadOnlyList<RenamePlanEntry> plan;
@@ -262,7 +267,8 @@ public sealed partial class MainViewModel : ObservableObject
                 PublishIssue(entry, "Analisi");
             }
             RecountStatuses();
-            ProviderWarning = DescribeFailures(health);
+            _lastFailures = health is null ? [] : [.. health.Failures];
+            ProviderWarning = DescribeFailures(_lastFailures);
             IsProviderWarningOpen = ProviderWarning is not null;
             Phase = AppPhase.Preview;
         }
@@ -327,10 +333,8 @@ public sealed partial class MainViewModel : ObservableObject
         IsDryRun = false; // il prossimo click applica davvero
 
         SummaryHasErrors = failed > 0;
-        SummaryTitle = options.DryRun ? "Simulazione completata" : "Ridenominazione completata";
-        SummaryMessage = options.DryRun
-            ? $"{ok} file verrebbero rinominati, {failed} non potrebbero esserlo. Nessuna modifica effettuata: premi Avvia Ridenominazione per applicare."
-            : $"{ok} file rinominati, {failed} errori, {warnings} con avvisi.";
+        _lastSummary = (ok, failed, warnings, options.DryRun);
+        DescribeSummary();
         IsSummaryOpen = true;
         _messenger.Send(new RunCompletedMessage(ok, failed, warnings, options.DryRun, _lastJournal));
     }
@@ -492,6 +496,13 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task SettingsSavedAsync(string? previousLanguage)
     {
         SyncFromSettings();
+        if (IsBatchMode)
+        {
+            // I nomi vengono dalle regole: niente ricerche né template dei film (Rerender qui produceva un piano "film").
+            // Si ricalcola solo l'anteprima, così anche i messaggi seguono un'eventuale nuova lingua.
+            await RefreshBatchPreviewAsync();
+            return;
+        }
         if (!string.Equals(previousLanguage, Settings.Current.Matching.Language, StringComparison.OrdinalIgnoreCase))
         {
             await ReanalyzeIfOpenAsync();
@@ -544,27 +555,55 @@ public sealed partial class MainViewModel : ObservableObject
         var english = current.Matching.Language.StartsWith("en", StringComparison.OrdinalIgnoreCase);
         LanguageHint = english || !string.IsNullOrWhiteSpace(current.Keys.TmdbApiKey)
             ? null
-            : $"Senza chiave TMDb i film non vengono riconosciuti e TVmaze, la fonte senza chiave, ha i titoli degli episodi solo in inglese: se il nome del file ne contiene già uno, Renamr tiene quello. " +
-              $"Per i titoli in {SelectedLanguage.Label.ToLowerInvariant()} crea una chiave gratuita su themoviedb.org (Impostazioni ➔ API) e incollala nelle impostazioni.";
+            : S.Format(nameof(Strings.LanguageHintNoTmdb), SelectedLanguage.Label);
         IsLanguageHintOpen = LanguageHint is not null && !IsBatchMode;
     }
 
-    private static string? DescribeFailures(ProviderHealth? health)
+    private static string? DescribeFailures(KeyValuePair<string, RenamrError>[] failures)
     {
-        if (health is null || health.Failures.Count == 0)
+        if (failures.Length == 0)
         {
             return null;
         }
-        var lines = health.Failures.OrderBy(f => f.Key, StringComparer.OrdinalIgnoreCase).Select(f => f switch
+        var lines = failures.OrderBy(f => f.Key, StringComparer.OrdinalIgnoreCase).Select(f => f switch
         {
-            { Key: "TMDb", Value.Code: RenamrErrorCode.ProviderAuthFailed } =>
-                "TMDb ha rifiutato la chiave API, quindi i titoli sono arrivati da altre fonti (in inglese). " +
-                "In Impostazioni incolla la \"Chiave API\" che trovi su themoviedb.org in Impostazioni ➔ API.",
-            { Value.Code: RenamrErrorCode.ProviderAuthFailed } =>
-                $"{f.Key} ha rifiutato la chiave API: i suoi risultati sono stati sostituiti da altre fonti.",
-            _ => $"{f.Key}: {f.Value.Message.ToLowerInvariant()}, i suoi risultati sono stati sostituiti da altre fonti.",
+            { Key: "TMDb", Value.Code: RenamrErrorCode.ProviderAuthFailed } => S.ProviderTmdbRejected,
+            { Value.Code: RenamrErrorCode.ProviderAuthFailed } => S.Format(nameof(Strings.ProviderKeyRejected), f.Key),
+            _ => S.Format(nameof(Strings.ProviderFailed), f.Key, ErrorMessages.Describe(f.Value.Code).ToLowerInvariant()),
         });
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private void DescribeSummary()
+    {
+        if (_lastSummary is not { } r)
+        {
+            return;
+        }
+        SummaryTitle = r.DryRun ? S.SummaryDryRunTitle : S.SummaryRenameTitle;
+        SummaryMessage = r.DryRun
+            ? S.Format(nameof(Strings.SummaryDryRunMessage), r.Ok, r.Failed)
+            : S.Format(nameof(Strings.SummaryRenameMessage), r.Ok, r.Failed, r.Warnings);
+    }
+
+    /// <summary>
+    /// Lingua dell'interfaccia cambiata: si rifanno i testi calcolati qui (riepilogo, avvisi, stati delle righe, regole).
+    /// I messaggi d'errore già arrivati dall'analisi restano com'erano fino alla prossima analisi.
+    /// </summary>
+    public void RefreshTexts()
+    {
+        OnPropertyChanged(nameof(DropZoneTitle));
+        OnPropertyChanged(nameof(DropZoneHint));
+        OnPropertyChanged(nameof(PrimaryActionText));
+        SyncFromSettings();
+        DescribeSummary();
+        ProviderWarning = DescribeFailures(_lastFailures);
+        foreach (var item in Items)
+        {
+            item.RefreshTexts();
+        }
+        Batch.RefreshTexts();
+        Issues.RefreshTexts();
     }
 
     private async Task ReanalyzeIfOpenAsync()

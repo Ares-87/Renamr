@@ -1,12 +1,13 @@
 <ctl:FAContentDialog xmlns="https://github.com/avaloniaui"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                     xmlns:l="using:Renamr.Linux.Helpers"
                      xmlns:ctl="using:FluentAvalonia.UI.Controls"
                      xmlns:vm="using:Renamr.Presentation.ViewModels"
                      x:Class="Renamr.Linux.Views.SettingsDialog"
                      x:DataType="vm:SettingsViewModel"
-                     Title="Impostazioni"
-                     PrimaryButtonText="Salva"
-                     CloseButtonText="Annulla"
+                     Title="{l:Tr Settings}"
+                     PrimaryButtonText="{l:Tr Save}"
+                     CloseButtonText="{l:Tr Cancel}"
                      DefaultButton="Primary"
                      PrimaryButtonCommand="{Binding SaveCommand}">
 
@@ -34,40 +35,43 @@
     <ScrollViewer MaxHeight="560" Padding="0,0,16,0">
         <StackPanel Spacing="20" MinWidth="560" MaxWidth="680">
 
+            <!-- In "Rinomina file" formati, chiavi API e riconoscimento non servono: si vedono solo in "Film, Serie e Musica". -->
+            <TextBlock Classes="hint" Text="{l:Tr SettingsBatchHint}" IsVisible="{Binding IsBatchMode}" />
+
             <!-- Template con anteprima dal vivo -->
-            <StackPanel Spacing="10">
-                <TextBlock Text="Formato dei nomi" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+            <StackPanel Spacing="10" IsVisible="{Binding IsMediaMode}">
+                <TextBlock Text="{l:Tr SettingsNameFormats}" Theme="{StaticResource BodyStrongTextBlockStyle}" />
                 <TextBlock Classes="hint"
-                           Text="Segnaposto: {Title} {Year} {Resolution} {Show Title} {Season:00} {Episode:00} {Episode Title} {Absolute:000} {Artist} {Album} {Track:00}. Usa / per organizzare in cartelle." />
+                           Text="{l:Tr SettingsPlaceholders}" />
 
                 <StackPanel>
-                    <TextBlock Classes="label" Text="Film" />
+                    <TextBlock Classes="label" Text="{l:Tr FormatMovie}" />
                     <TextBox Text="{Binding MovieTemplate}" />
                     <TextBlock Classes="preview" Text="{Binding MoviePreview}" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBlock Classes="label" Text="Serie TV" />
+                    <TextBlock Classes="label" Text="{l:Tr FormatEpisode}" />
                     <TextBox Text="{Binding EpisodeTemplate}" />
                     <TextBlock Classes="preview" Text="{Binding EpisodePreview}" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBlock Classes="label" Text="Anime (numerazione assoluta)" />
+                    <TextBlock Classes="label" Text="{l:Tr FormatAnime}" />
                     <TextBox Text="{Binding AnimeTemplate}" />
                     <TextBlock Classes="preview" Text="{Binding AnimePreview}" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBlock Classes="label" Text="Musica" />
+                    <TextBlock Classes="label" Text="{l:Tr FormatMusic}" />
                     <TextBox Text="{Binding MusicTemplate}" />
                     <TextBlock Classes="preview" Text="{Binding MusicPreview}" />
                 </StackPanel>
-                <HyperlinkButton Content="Ripristina formati predefiniti" Command="{Binding RestoreDefaultTemplatesCommand}" Padding="0" />
+                <HyperlinkButton Content="{l:Tr RestoreFormats}" Command="{Binding RestoreDefaultTemplatesCommand}" Padding="0" />
             </StackPanel>
 
             <!-- Database online -->
-            <StackPanel Spacing="10">
-                <TextBlock Text="Database online" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+            <StackPanel Spacing="10" IsVisible="{Binding IsMediaMode}">
+                <TextBlock Text="{l:Tr SettingsDatabases}" Theme="{StaticResource BodyStrongTextBlockStyle}" />
                 <TextBlock Classes="hint"
-                           Text="Le chiavi sono cifrate con una chiave leggibile solo dal tuo utente Linux. TVmaze e MusicBrainz funzionano senza chiave; i provider senza chiave vengono saltati." />
+                           Text="{l:Tr SettingsKeysHintLinux}" />
                 <StackPanel>
                     <TextBlock Classes="label" Text="TheMovieDB (API key v3)" />
                     <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding TmdbApiKey}" />
@@ -82,7 +86,7 @@
                         <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding TheTvdbApiKey}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1">
-                        <TextBlock Classes="label" Text="PIN abbonato (opz.)" />
+                        <TextBlock Classes="label" Text="{l:Tr SettingsTvdbPin}" />
                         <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding TheTvdbPin}" />
                     </StackPanel>
                 </Grid>
@@ -91,25 +95,35 @@
                     <TextBox PasswordChar="●" Classes="revealPasswordButton" Text="{Binding AcoustIdClientKey}" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBlock Classes="label" Text="AniDB (nome client registrato)" />
+                    <TextBlock Classes="label" Text="{l:Tr SettingsAniDbClient}" />
                     <TextBox Text="{Binding AniDbClientName}" />
                 </StackPanel>
             </StackPanel>
 
             <!-- Riconoscimento -->
-            <StackPanel Spacing="10">
-                <TextBlock Text="Riconoscimento" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+            <StackPanel Spacing="10" IsVisible="{Binding IsMediaMode}">
+                <TextBlock Text="{l:Tr SettingsRecognition}" Theme="{StaticResource BodyStrongTextBlockStyle}" />
                 <StackPanel>
                     <TextBlock Classes="label">
-                        <Run Text="Confidenza minima per lo stato &quot;Pronto&quot; (%):" />
+                        <Run Text="{l:Tr SettingsMinConfidence}" /><Run Text=":" />
                         <Run Text="{Binding HighConfidencePercent}" FontWeight="SemiBold" />
                     </TextBlock>
                     <Slider Minimum="50" Maximum="99" TickFrequency="1" IsSnapToTickEnabled="True"
                             Value="{Binding HighConfidencePercent}" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBlock Classes="label" Text="Lingua dei titoli" />
+                    <TextBlock Classes="label" Text="{l:Tr TitleLanguage}" />
                     <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}" MinWidth="200" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Interfaccia: sempre visibile, in tutte e due le modalità -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="{l:Tr SettingsInterface}" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr SettingsUiLanguage}" />
+                    <ComboBox ItemsSource="{Binding UiLanguages}" SelectedItem="{Binding UiLanguage}" MinWidth="200"
+                              DisplayMemberBinding="{Binding Label, x:DataType=vm:UiLanguageOption}" />
                 </StackPanel>
             </StackPanel>
         </StackPanel>
