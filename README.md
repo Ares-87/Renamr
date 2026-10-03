@@ -257,7 +257,7 @@ dotnet run --project src/Renamr.Linux                  # or: dotnet run --projec
 dotnet publish src/Renamr.Linux -c Release -r linux-x64 --self-contained -o out/linux
 ```
 
-The version shown in the title bar (`Renamr v1.10.0`, with the commit in the tooltip) comes from `<Version>` in
+The version shown in the title bar (`Renamr v1.10.1`, with the commit in the tooltip) comes from `<Version>` in
 `Directory.Build.props` and goes up with every pull request.
 
 ## Publishing a release
@@ -266,13 +266,16 @@ The [Build and release](.github/workflows/release.yml) workflow builds and tests
 `main`, on Windows and Linux runners. To publish a release, push a tag matching the version in `Directory.Build.props`:
 
 ```bash
-git tag v1.10.0
-git push origin v1.10.0
+git tag v1.10.1
+git push origin v1.10.1
 ```
 
 The workflow then builds the Windows (x64, ARM64) and Linux (x64, ARM64) packages and attaches them to a new GitHub release
 with generated release notes. GitHub adds the source code archives on its own. A tag that doesn't match the version stops the
 workflow.
+
+Without pushing a tag yourself: open **Actions → Build and release → Run workflow** on `main` and tick **Publish a release**.
+The workflow creates the tag `v<Version>` and the release in one go.
 
 ## Project layout
 
