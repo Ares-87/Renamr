@@ -47,6 +47,7 @@ public sealed class JsonSettingsStore : ISettingsStore, IDisposable
             {
                 Templates = settings.Templates,
                 Matching = settings.Matching,
+                Output = settings.Output,
                 ProtectedKeys = _protector.Protect(JsonSerializer.Serialize(settings.Keys)),
             };
             Directory.CreateDirectory(Path.GetDirectoryName(_file)!);
@@ -77,6 +78,7 @@ public sealed class JsonSettingsStore : ISettingsStore, IDisposable
             }
             settings.Templates = document.Templates ?? settings.Templates;
             settings.Matching = document.Matching ?? settings.Matching;
+            settings.Output = document.Output ?? settings.Output;
             if (!string.IsNullOrEmpty(document.ProtectedKeys))
             {
                 settings.Keys = JsonSerializer.Deserialize<ProviderKeys>(_protector.Unprotect(document.ProtectedKeys)) ?? settings.Keys;
@@ -93,6 +95,7 @@ public sealed class JsonSettingsStore : ISettingsStore, IDisposable
     {
         public TemplateSettings? Templates { get; set; }
         public MatchingSettings? Matching { get; set; }
+        public OutputSettings? Output { get; set; }
         public string? ProtectedKeys { get; set; }
     }
 

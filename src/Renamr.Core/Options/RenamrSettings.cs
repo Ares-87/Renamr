@@ -8,6 +8,7 @@ public sealed class RenamrSettings
     public TemplateSettings Templates { get; set; } = new();
     public MatchingSettings Matching { get; set; } = new();
     public ProviderKeys Keys { get; set; } = new();
+    public OutputSettings Output { get; set; } = new();
 
     /// <summary>Estensioni considerate, per tipo.</summary>
     public HashSet<string> VideoExtensions { get; set; } = new(StringComparer.OrdinalIgnoreCase)
@@ -50,6 +51,13 @@ public sealed class TemplateSettings
     /// </summary>
     public static MediaKind KindFor(MediaKind kind, ParsedMediaName? parsed) =>
         kind == MediaKind.Anime && parsed is not null && parsed.AbsoluteEpisode is null ? MediaKind.Episode : kind;
+}
+
+/// <summary>Cosa fa la ridenominazione oltre a cambiare il nome.</summary>
+public sealed class OutputSettings
+{
+    /// <summary>Titolo, stagione/episodio e data scritti dentro il file (tag MKV/MP4/MP3). Si può spegnere.</summary>
+    public bool WriteEmbeddedMetadata { get; set; } = true;
 }
 
 public sealed class MatchingSettings

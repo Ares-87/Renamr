@@ -93,6 +93,34 @@ public class QuickChoicesTests : IDisposable
     });
 
     [Fact]
+    public void Embedded_metadata_can_be_turned_off_and_stays_off() => UiThread.Run(async () =>
+    {
+        _lib.Fixture("sample.mkv", "The.Matrix.1999.1080p.mkv");
+        var (vm, sp, _, settings) = Create();
+        using var _ = sp;
+        Assert.True(vm.WriteEmbeddedMetadata);
+
+        vm.WriteEmbeddedMetadata = false;
+        await vm.SaveWriteEmbeddedMetadataCommand.ExecutionTask!;
+        Assert.False(settings.Current.Output.WriteEmbeddedMetadata);
+
+        await vm.OpenFolderCommand.ExecuteAsync(_lib.Root);
+        await vm.RunCommand.ExecuteAsync(null);
+
+        var renamed = Path.Combine(_lib.Root, "Matrix (1999) [1080p].mkv");
+        Assert.True(File.Exists(renamed));
+        using (var file = TagLib.File.Create(renamed))
+        {
+            Assert.NotEqual("Matrix", file.Tag.Title); // nessun tag scritto
+        }
+        Assert.Empty(vm.Issues.Issues);
+
+        var (again, sp2, _, _) = Create(settings.Current);
+        using var __ = sp2;
+        Assert.False(again.WriteEmbeddedMetadata);
+    });
+
+    [Fact]
     public void Hint_explains_missing_tmdb_key_for_translated_titles()
     {
         var (vm, sp, _, _) = Create();
