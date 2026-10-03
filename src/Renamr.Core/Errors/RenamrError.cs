@@ -7,7 +7,8 @@ public sealed record RenamrError(RenamrErrorCode Code, string Message, string? D
     public bool IsWarning => Code is RenamrErrorCode.LowConfidenceMatch
         or RenamrErrorCode.MetadataFormatUnsupported
         or RenamrErrorCode.DateSyncFailed
-        or RenamrErrorCode.MetadataWriteFailed;
+        or RenamrErrorCode.MetadataWriteFailed
+        or RenamrErrorCode.MetadataSkippedLargeFile;
 
     public static RenamrError From(RenamrErrorCode code, string? detail = null) =>
         new(code, ErrorMessages.Describe(code), detail);
@@ -39,6 +40,7 @@ public static class ErrorMessages
         RenamrErrorCode.MetadataFormatUnsupported => "Formato che non supporta la data nei metadati",
         RenamrErrorCode.MetadataWriteFailed => "Scrittura dei metadati interni non riuscita",
         RenamrErrorCode.DateSyncFailed => "Aggiornamento delle date del file non riuscito",
+        RenamrErrorCode.MetadataSkippedLargeFile => "Metadati interni non scritti: file oltre 4 GB",
         RenamrErrorCode.Cancelled => "Operazione annullata",
         _ => "Errore imprevisto",
     };

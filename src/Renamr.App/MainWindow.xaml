@@ -254,7 +254,7 @@
                             <FontIcon Glyph="{x:Bind ui:Ui.IssueGlyph(IsWarning)}" FontSize="14" Foreground="{x:Bind ui:Ui.IssueForeground(IsWarning)}" />
                             <TextBlock Grid.Column="1" Text="{x:Bind Code}" FontFamily="Cascadia Mono, Consolas" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                             <TextBlock Grid.Column="2" Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
-                            <TextBlock Grid.Column="3" Text="{x:Bind Message}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="3" Text="{x:Bind MessageWithDetail}" TextTrimming="CharacterEllipsis" />
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
@@ -288,6 +288,9 @@
                           MinWidth="130"
                           VerticalAlignment="Center"
                           ToolTipService.ToolTip="Lingua dei titoli: cambiandola le ricerche ripartono subito" />
+                <CheckBox Content="Scrivi metadati interni"
+                          IsChecked="{x:Bind ViewModel.WriteEmbeddedMetadata, Mode=TwoWay}"
+                          ToolTipService.ToolTip="Scrive titolo, episodio e data anche dentro i file (tag MKV/MP4/MP3). Se è spento Renamr cambia solo il nome e le date del file." />
                 <CheckBox IsChecked="{x:Bind ViewModel.IncludeLowConfidence, Mode=TwoWay}"
                           ToolTipService.ToolTip="Rinomina anche i file riconosciuti con poca sicurezza (righe gialle). Controllali prima nell'anteprima.">
                     <TextBlock>

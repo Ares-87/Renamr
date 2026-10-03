@@ -131,5 +131,34 @@ public class MetadataWriterTests : IDisposable
         return new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks(BinaryPrimitives.ReadInt64BigEndian(buf) / 100);
     }
 
+    /// <summary>Episodi 2160p oltre 4 GB: niente riscrittura dei tag, ma con la data nell'intestazione a posto nessun avviso.</summary>
+    [Fact]
+    public void Large_mkv_with_header_date_gets_no_warning()
+    {
+        var path = _lib.Fixture("sample.mkv", "a.mkv");
+        var writer = new TagLibMetadataWriter { CopyOnWriteMaxBytes = 1 };
+
+        var result = writer.Write(path, Film);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Warnings);
+        Assert.Equal(new DateTime(1999, 3, 31, 12, 0, 0, DateTimeKind.Utc), ReadMatroskaDate(path));
+        using var file = TagLib.File.Create(path);
+        Assert.NotEqual("The Matrix", file.Tag.Title); // tag non riscritti
+    }
+
+    [Fact]
+    public void Large_file_without_header_date_explains_why()
+    {
+        var path = _lib.Fixture("sample.mkv", "a.mkv");
+        var writer = new TagLibMetadataWriter { CopyOnWriteMaxBytes = 1 };
+
+        var result = writer.Write(path, Film with { ReleaseDate = null, YearOnly = 1999 });
+
+        var warning = Assert.Single(result.Warnings);
+        Assert.Equal(Core.Errors.RenamrErrorCode.MetadataSkippedLargeFile, warning.Code);
+        Assert.Contains("4 GB", warning.Message, StringComparison.Ordinal);
+    }
+
     public void Dispose() => _lib.Dispose();
 }

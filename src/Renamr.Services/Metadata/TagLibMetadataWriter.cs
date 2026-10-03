@@ -44,6 +44,7 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
 
         var warnings = new List<RenamrError>();
         var length = new FileInfo(path).Length;
+        var tagsWritten = false;
 
         if (length <= CopyOnWriteMaxBytes && HasFreeSpaceFor(path, length))
         {
@@ -53,14 +54,11 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
                 return result;
             }
             warnings.AddRange(result.Warnings);
-        }
-        else
-        {
-            warnings.Add(RenamrError.From(RenamrErrorCode.MetadataWriteFailed,
-                "File troppo grande per una riscrittura sicura dei tag: aggiornata solo la data nell'intestazione."));
+            tagsWritten = true;
         }
 
         // Data "di codifica" nell'intestazione del contenitore: è quella che Esplora File mostra come "Supporto creato".
+        string? headerProblem = null;
         if (metadata.ReleaseDate is { } date)
         {
             var utc = date.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc);
@@ -74,7 +72,21 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
             };
             if (!patched)
             {
+                headerProblem = reason;
                 _log.LogDebug("Data intestazione non aggiornata per {Path}: {Reason}", path, reason);
+            }
+        }
+
+        if (!tagsWritten)
+        {
+            // File grande (riscriverlo sarebbe lento e rischioso): se la data dell'intestazione è a posto
+            // l'obiettivo è raggiunto e non serve disturbare l'utente con un avviso per ogni file.
+            if (headerProblem is not null || metadata.ReleaseDate is null)
+            {
+                var why = length > CopyOnWriteMaxBytes ? "file oltre 4 GB" : "spazio libero insufficiente per la copia di sicurezza";
+                warnings.Add(new RenamrError(RenamrErrorCode.MetadataSkippedLargeFile,
+                    length > CopyOnWriteMaxBytes ? ErrorMessages.Describe(RenamrErrorCode.MetadataSkippedLargeFile) : "Metadati interni non scritti: spazio insufficiente",
+                    $"{why}; restano le date del file{(headerProblem is null ? "" : $" (data nell'intestazione: {headerProblem})")}"));
             }
         }
 
@@ -97,7 +109,7 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
             }
 
             File.SetAttributes(temp, FileAttributes.Normal);
-            File.Replace(temp, path, destinationBackupFileName: null, ignoreMetadataErrors: true);
+            ReplaceWith(temp, path);
 
             return dateWritten || metadata.ReleaseDate is null
                 ? OperationResult.Ok()
@@ -117,6 +129,40 @@ public sealed class TagLibMetadataWriter(ILogger<TagLibMetadataWriter>? logger =
         {
             TryDelete(temp);
         }
+    }
+
+    /// <summary>
+    /// Scambio atomico della copia con l'originale. Alcuni dischi di rete e chiavette (exFAT/FAT32) non supportano
+    /// File.Replace: lì si sposta l'originale da parte, si mette la copia al suo posto e solo alla fine si cancella il vecchio.
+    /// </summary>
+    private void ReplaceWith(string temp, string path)
+    {
+        try
+        {
+            File.Replace(temp, path, destinationBackupFileName: null, ignoreMetadataErrors: true);
+            return;
+        }
+        catch (Exception ex) when (ex is IOException and not FileNotFoundException || ex is PlatformNotSupportedException)
+        {
+            if (!File.Exists(path) || !File.Exists(temp))
+            {
+                throw;
+            }
+            _log.LogDebug(ex, "File.Replace non supportato su {Path}, uso lo scambio con copia di riserva", path);
+        }
+
+        var backup = temp + ".old";
+        File.Move(path, backup);
+        try
+        {
+            File.Move(temp, path);
+        }
+        catch
+        {
+            File.Move(backup, path); // rimette l'originale com'era
+            throw;
+        }
+        TryDelete(backup);
     }
 
     /// <summary>Applica i campi comuni e la data completa nel formato nativo di ogni contenitore.</summary>
