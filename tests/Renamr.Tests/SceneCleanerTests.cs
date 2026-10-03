@@ -16,6 +16,13 @@ public class SceneCleanerTests
     [InlineData("Spider-Man Across the Spider-Verse (2023).mkv", "Spider-Man Across the Spider-Verse", 2023, null)]
     [InlineData("La.vita.e.bella.1997.ITA.1080p.BluRay.x264.mkv", "La vita e bella", 1997, "1080p")]
     [InlineData("Inception.mkv", "Inception", null, null)]
+    [InlineData("Chupa.2023.iTA-ENG.WEBDL.2160p.HDR.x265-CYBER.mkv", "Chupa", 2023, "2160p")]
+    [InlineData("Fast.And.Furious.9.The.Fast.Saga.2021.iTA-ENG.Bluray.2160p.HDR.x265-CYBER.mkv", "Fast And Furious 9 The Fast Saga", 2021, "2160p")]
+    [InlineData("Insidious.La.Porta,Rossa.2023.iTA-ENG.WEBDL.2160p.HEVC.HDR.x265-CYBER.mkv", "Insidious La Porta,Rossa", 2023, "2160p")]
+    [InlineData("Jurassic.World.Il.Dominio.EXTENDED.2022.iTA-ENG.Bluray.2160p.HDR.x265-CYBER.mkv", "Jurassic World Il Dominio", 2022, "2160p")]
+    [InlineData("Mike.&.Nick.&.Nick.&.Alice.2026.iTA-ENG.WEBDL.2160p.HEVC.HDR.x265-CYBER.mkv", "Mike & Nick & Nick & Alice", 2026, "2160p")]
+    [InlineData("Spider-Man.Across.The.Spider-Verse.2023.iTA-ENG.WEBDL.2160p.HDR.x265-CYBER.mkv", "Spider-Man Across The Spider-Verse", 2023, "2160p")]
+    [InlineData("Assassinio sul Nilo (2022).mkv", "Assassinio sul Nilo", 2022, null)]
     public void Movies_are_cleaned(string file, string title, int? year, string? resolution)
     {
         var p = _parser.Parse(file);
