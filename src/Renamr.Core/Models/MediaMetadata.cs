@@ -24,6 +24,12 @@ public sealed record MediaMetadata
     public int? AbsoluteEpisode { get; init; }
     public string? EpisodeTitle { get; init; }
 
+    /// <summary>
+    /// False quando il titolo dell'episodio non è nella lingua scelta (es. TVmaze: solo inglese).
+    /// In quel caso, se il nome file ne contiene già uno, l'anteprima tiene quello.
+    /// </summary>
+    public bool EpisodeTitleLocalized { get; init; } = true;
+
     // Musica
     public string? Artist { get; init; }
     public string? AlbumArtist { get; init; }

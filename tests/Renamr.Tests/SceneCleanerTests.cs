@@ -96,4 +96,21 @@ public class SceneCleanerTests
         Assert.StartsWith("Agents of S.H.I.E.L.D", p.Title);
         Assert.Equal(1, p.Season);
     }
+
+    [Theory]
+    [InlineData("Silo S03E01 Chi sei tu 2160p DVHDR10.mkv", "Chi sei tu")]
+    [InlineData("Silo S03E03 Dark Web 2160p DVHDR10.mkv", "Dark Web")]
+    [InlineData("Breaking.Bad.S01E02.Cats.in.the.Bag.720p.HDTV.x264-CTU.mkv", "Cats in the Bag")]
+    [InlineData("Lost - 2x05 - ...E le donne.avi", "E le donne")]
+    [InlineData("Show.S01E02.1080p.WEB-DL.x264-GRP.mkv", null)]
+    [InlineData("Show.S01E02.PROPER.1080p.mkv", null)]
+    [InlineData("Show S01E02 ITA ENG 1080p.mkv", null)]
+    [InlineData("Show.S01E02.mkv", null)]
+    [InlineData("Show.S01E02-GRP.mkv", null)]
+    public void Episode_title_in_the_file_name_is_kept(string file, string? expected)
+    {
+        var p = _parser.Parse(file);
+        Assert.Equal(MediaKind.Episode, p.Kind);
+        Assert.Equal(expected, p.EpisodeTitle);
+    }
 }

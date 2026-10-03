@@ -134,11 +134,16 @@
             </InfoBar>
 
             <!-- Perché alcuni titoli restano in inglese -->
-            <InfoBar Grid.Row="2"
-                     Severity="Informational"
-                     Title="Titoli tradotti"
-                     IsOpen="{x:Bind ViewModel.IsLanguageHintOpen, Mode=TwoWay}"
-                     Message="{x:Bind ViewModel.LanguageHint, Mode=OneWay}" />
+            <StackPanel Grid.Row="2" Spacing="8">
+                <InfoBar Severity="Warning"
+                         Title="Un database ha dato errore"
+                         IsOpen="{x:Bind ViewModel.IsProviderWarningOpen, Mode=TwoWay}"
+                         Message="{x:Bind ViewModel.ProviderWarning, Mode=OneWay}" />
+                <InfoBar Severity="Informational"
+                         Title="Titoli tradotti"
+                         IsOpen="{x:Bind ViewModel.IsLanguageHintOpen, Mode=TwoWay}"
+                         Message="{x:Bind ViewModel.LanguageHint, Mode=OneWay}" />
+            </StackPanel>
 
             <!-- Intestazione colonne -->
             <Grid Grid.Row="3" Padding="16,0" ColumnSpacing="12">

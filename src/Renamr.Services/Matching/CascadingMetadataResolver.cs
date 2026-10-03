@@ -17,7 +17,8 @@ namespace Renamr.Services.Matching;
 public sealed class CascadingMetadataResolver(
     IEnumerable<IMetadataProvider> providers,
     ISettingsStore settings,
-    ILogger<CascadingMetadataResolver>? logger = null) : IMetadataResolver
+    ILogger<CascadingMetadataResolver>? logger = null,
+    ProviderHealth? health = null) : IMetadataResolver
 {
     private readonly IReadOnlyList<IMetadataProvider> _providers = [.. providers.OrderBy(p => p.Priority)];
     private readonly ILogger _log = logger ?? NullLogger<CascadingMetadataResolver>.Instance;
@@ -49,6 +50,7 @@ public sealed class CascadingMetadataResolver(
             {
                 _log.LogWarning("{Provider} non disponibile per '{Title}': {Message}", provider.Name, query.Title, ex.Message);
                 trace.Add($"{provider.Name}: {Core.Errors.ErrorMessages.Describe(ex.Code)}");
+                health?.Report(provider.Name, ex.Code, ex.Message);
                 continue;
             }
 

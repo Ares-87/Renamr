@@ -31,6 +31,13 @@ internal static partial class SceneTags
     public static partial Regex Noise();
 
     /// <summary>Hash CRC32 tipico delle release anime: [1A2B3C4D].</summary>
+    /// <summary>
+    /// Dove finisce il titolo dell'episodio scritto nel nome ("Silo S03E03 Dark Web 2160p"): solo tag inequivocabili,
+    /// perché parole come "web", "real" o "complete" possono far parte del titolo.
+    /// </summary>
+    [GeneratedRegex(L + @"(?:blu-?ray|bd-?remux|remux|bdrip|brrip|web-?dl|web-?rip|hdtv|pdtv|dvd-?rip|hd-?rip|amzn|dsnp|hmax|atvp|proper|repack|rerip|internal|multi(?:sub)?|dual[.\s-]?audio|ita|eng|jpn|fre|ger|spa|subs?|subbed|dubbed)" + R, Opt)]
+    public static partial Regex EpisodeTitleStop();
+
     [GeneratedRegex(@"\[[0-9A-F]{8}\]", Opt)]
     public static partial Regex Crc32();
 
