@@ -10,7 +10,11 @@ using Renamr.Core.Models;
 namespace Renamr.Services.Providers.Tv;
 
 /// <summary>Serie TV (e anime come fallback): TVmaze, API pubblica senza chiave.</summary>
-public sealed partial class TvMazeProvider(HttpClient http) : IMetadataProvider
+/// <para>
+/// TVmaze ha i nomi in inglese; i titoli localizzati della serie arrivano dagli AKA per paese (<c>/shows/{id}/akas</c>).
+/// I titoli degli episodi esistono solo in inglese.
+/// </para>
+public sealed partial class TvMazeProvider(HttpClient http, ISettingsStore? settings = null) : IMetadataProvider
 {
     public const string HttpClientName = "tvmaze";
 
@@ -46,8 +50,10 @@ public sealed partial class TvMazeProvider(HttpClient http) : IMetadataProvider
             {
                 var score = showScore;
                 Episode? episode = null;
+                string? localizedTitle = null;
                 if (result.Count == 0)
                 {
+                    localizedTitle = await GetLocalizedTitleAsync(show.Id, cancellationToken).ConfigureAwait(false);
                     episode = await GetEpisodeAsync(show.Id, query, cancellationToken).ConfigureAwait(false);
                     if (episode is null)
                     {
@@ -60,7 +66,8 @@ public sealed partial class TvMazeProvider(HttpClient http) : IMetadataProvider
                     Kind = query.Kind,
                     Provider = Name,
                     ProviderId = show.Id.ToString(CultureInfo.InvariantCulture),
-                    Title = show.Name ?? query.Title,
+                    Title = localizedTitle ?? show.Name ?? query.Title,
+                    OriginalTitle = show.Name,
                     ImdbId = show.Externals?.Imdb,
                     Season = episode?.Season ?? query.Season,
                     Episode = episode?.Number ?? query.Episode,
@@ -78,6 +85,25 @@ public sealed partial class TvMazeProvider(HttpClient http) : IMetadataProvider
         {
             throw ProviderHelpers.Wrap(Name, ex);
         }
+    }
+
+    private async Task<string?> GetLocalizedTitleAsync(int showId, CancellationToken ct)
+    {
+        var language = LanguagePreference.From(settings?.Current.Matching.Language);
+        if (language.IsEnglish || language.Country is null)
+        {
+            return null;
+        }
+        List<Aka> akas;
+        try
+        {
+            akas = await http.GetFromJsonAsync<List<Aka>>($"shows/{showId}/akas", ct).ConfigureAwait(false) ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            return null; // il titolo localizzato è un di più: non deve far fallire il riconoscimento
+        }
+        return akas.FirstOrDefault(a => string.Equals(a.Country?.Code, language.Country, StringComparison.OrdinalIgnoreCase))?.Name;
     }
 
     private async Task<Episode?> GetEpisodeAsync(int showId, MediaQuery query, CancellationToken ct)
@@ -112,6 +138,9 @@ public sealed partial class TvMazeProvider(HttpClient http) : IMetadataProvider
         [property: JsonPropertyName("premiered")] string? Premiered,
         [property: JsonPropertyName("genres")] List<string>? Genres,
         [property: JsonPropertyName("externals")] Externals? Externals);
+
+    private sealed record Aka([property: JsonPropertyName("name")] string? Name, [property: JsonPropertyName("country")] Country? Country);
+    private sealed record Country([property: JsonPropertyName("code")] string? Code);
 
     private sealed record Externals([property: JsonPropertyName("imdb")] string? Imdb);
 
