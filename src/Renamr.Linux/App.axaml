@@ -5,8 +5,8 @@
              RequestedThemeVariant="Default">
     <!-- Default: segue il tema chiaro/scuro del desktop, come l'app Windows. -->
     <Application.Styles>
-        <!-- Linux non ha un colore d'accento di sistema: si usa il blu predefinito di Windows. -->
-        <sty:FluentAvaloniaTheme PreferSystemTheme="True" PreferUserAccentColor="False" CustomAccentColor="#0078D4" />
+        <!-- Linux non ha un colore d'accento di sistema: si usa il blu del logo. -->
+        <sty:FluentAvaloniaTheme PreferSystemTheme="True" PreferUserAccentColor="False" CustomAccentColor="#2F6BFF" />
 
         <!-- Badge di stato a "pillola" (stessi valori di Renamr.App) -->
         <Style Selector="Border.badge">

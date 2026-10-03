@@ -7,6 +7,7 @@
         x:Class="Renamr.Linux.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="{Binding AppTitle}"
+        Icon="/Assets/renamr-icon.png"
         Width="1120" Height="740" MinWidth="760" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
@@ -45,6 +46,15 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
         </Style>
+        <Style Selector="Border.versionPill">
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="7,1,7,2" />
+        </Style>
+        <Style Selector="Border.versionPill > TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
         <Style Selector="Rectangle#DropZoneOutline.active">
             <Setter Property="Stroke" Value="{DynamicResource AccentFillColorDefaultBrush}" />
             <Setter Property="Fill" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
@@ -74,27 +84,33 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Grid x:Name="RootGrid" DragDrop.AllowDrop="True" RowDefinitions="48,Auto,*,Auto,Auto">
+    <Grid x:Name="RootGrid" DragDrop.AllowDrop="True" RowDefinitions="56,Auto,*,Auto,Auto">
 
-        <!-- ═══ Intestazione: nome e versione, cartella aperta ═══ -->
-        <Grid Margin="16,0" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12">
-            <ctl:FASymbolIcon Symbol="Rename" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
-            <TextBlock Grid.Column="1" Classes="caption" VerticalAlignment="Center"
-                       Text="{Binding AppTitle}"
-                       ToolTip.Tip="{Binding AppDetails}" />
-            <TextBlock Grid.Column="2" Classes="caption" VerticalAlignment="Center"
+        <!-- ═══ Intestazione: logo e versione, cartella aperta ═══ -->
+        <Grid Margin="24,0" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10">
+            <Image Source="{DynamicResource RenamrWordmark}" Height="20" VerticalAlignment="Center"
+                   ToolTip.Tip="{Binding AppDetails}" />
+            <Border Grid.Column="1" Classes="versionPill" VerticalAlignment="Center">
+                <TextBlock Text="{Binding AppVersion}" />
+            </Border>
+            <TextBlock Grid.Column="2" Classes="caption" VerticalAlignment="Center" HorizontalAlignment="Right"
                        Text="{Binding RootFolder}"
                        TextTrimming="CharacterEllipsis"
                        Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
         </Grid>
 
-        <!-- ═══ Modalità: film e serie (riconoscimento online) oppure qualunque file con regole ═══ -->
-        <!-- La scelta si collega nel code-behind dopo il caricamento: così ricreare la finestra (cambio di lingua) non cambia modalità. -->
-        <TabStrip x:Name="ModeTabs" Grid.Row="1" Margin="20,0,24,0" Classes="mode"
-                  IsEnabled="{Binding !IsBusy}">
-            <TabStripItem Content="{l:Tr ModeMedia}" ToolTip.Tip="{l:Tr ModeMediaTip}" />
-            <TabStripItem Content="{l:Tr ModeBatch}" ToolTip.Tip="{l:Tr ModeBatchTip}" />
-        </TabStrip>
+        <!-- ═══ Modalità a sinistra, impostazioni a destra: sempre a portata, in ogni fase ═══ -->
+        <Grid Grid.Row="1" Margin="20,0,24,4" ColumnDefinitions="*,Auto">
+            <!-- La scelta si collega nel code-behind dopo il caricamento: così ricreare la finestra (cambio di lingua) non cambia modalità. -->
+            <TabStrip x:Name="ModeTabs" Classes="mode" IsEnabled="{Binding !IsBusy}">
+                <TabStripItem Content="{l:Tr ModeMedia}" ToolTip.Tip="{l:Tr ModeMediaTip}" />
+                <TabStripItem Content="{l:Tr ModeBatch}" ToolTip.Tip="{l:Tr ModeBatchTip}" />
+            </TabStrip>
+            <Button Grid.Column="1" Classes="icon" Click="Settings_Click" VerticalAlignment="Center"
+                    ToolTip.Tip="{l:Tr Settings}" IsEnabled="{Binding !IsBusy}">
+                <ctl:FASymbolIcon Symbol="Settings" FontSize="18" />
+            </Button>
+        </Grid>
 
         <!-- ═══ FASE 1 · Selezione & Drag-and-Drop ═══ -->
         <Grid Grid.Row="2" Margin="48,16,48,48" IsVisible="{Binding IsSelectPhase}">
@@ -105,7 +121,7 @@
                        Stroke="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
                        Fill="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="440">
-                <ctl:FASymbolIcon Symbol="Folder" FontSize="56" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                <Image Source="{DynamicResource RenamrLogo}" Height="64" Margin="0,0,0,12" HorizontalAlignment="Center" />
                 <TextBlock x:Name="DropZoneTitle"
                            Text="{Binding DropZoneTitle}"
                            Theme="{StaticResource SubtitleTextBlockStyle}"
@@ -128,13 +144,6 @@
                               SelectedItem="{Binding SelectedLanguage}"
                               DisplayMemberBinding="{Binding Label, x:DataType=vm:LanguageOption}" />
                 </StackPanel>
-                <!-- Le impostazioni anche prima di aprire una cartella (lingua dell'interfaccia, chiavi API). -->
-                <HyperlinkButton HorizontalAlignment="Center" Click="Settings_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <ctl:FASymbolIcon Symbol="Settings" FontSize="14" />
-                        <TextBlock Text="{l:Tr Settings}" />
-                    </StackPanel>
-                </HyperlinkButton>
             </StackPanel>
         </Grid>
 
@@ -505,9 +514,6 @@
                 <!-- Pulsanti: uno primario, il resto discreto -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Button Command="{Binding CancelCommand}" Content="{l:Tr Cancel}" IsVisible="{Binding IsBusy}" />
-                    <Button Click="Settings_Click" ToolTip.Tip="{l:Tr Settings}" IsVisible="{Binding !IsBusy}">
-                        <ctl:FASymbolIcon Symbol="Settings" FontSize="16" />
-                    </Button>
                     <Button Content="{l:Tr ChangeFolder}" Command="{Binding ResetCommand}" IsVisible="{Binding !IsBusy}" />
                     <Button Classes="accent" Command="{Binding RunCommand}" MinWidth="220" IsVisible="{Binding !IsBusy}">
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
