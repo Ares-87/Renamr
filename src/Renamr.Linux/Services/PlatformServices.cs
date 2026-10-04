@@ -50,6 +50,19 @@ public sealed class ShellService : IShellService
         }
     }
 
+    public void OpenUrl(string url)
+    {
+        // Senza aspettare: xdg-open può restare attivo finché il browser è aperto.
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo("xdg-open") { ArgumentList = { url }, UseShellExecute = false });
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // Nessun xdg-open: non c'è altro modo affidabile di aprire il browser.
+        }
+    }
+
     private static bool TryRun(string file, params string[] args)
     {
         try

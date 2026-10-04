@@ -1,14 +1,17 @@
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using FluentAvalonia.UI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Renamr.Core.Localization;
 using Renamr.Core.Models;
 using Renamr.Core.Templating;
+using Renamr.Presentation.Animation;
 using Renamr.Presentation.Services;
 using Renamr.Presentation.ViewModels;
 using Renamr.Services.IO;
@@ -37,32 +40,29 @@ public sealed partial class MainWindow : Window
         viewModel.PropertyChanged += ViewModel_PropertyChanged;
         UpdateDateHint();
 
-        // Modalità: prima si mostra quella del ViewModel, poi si ascoltano i clic. Un TabStrip appena creato seleziona
-        // da solo la prima voce, e con un binding questo rimetteva "Film, Serie e Musica" ricreando la finestra.
-        Loaded += (_, _) =>
+        UpdateModeTabs();
+
+        // La tazzina del caffè: prima oscillazione poco dopo l'apertura, poi ogni tanto.
+        _coffeeFrames = new DispatcherTimer { Interval = CoffeeWiggle.Frame };
+        _coffeeFrames.Tick += (_, _) => CoffeeFrame();
+        _coffeeTimer = new DispatcherTimer { Interval = CoffeeWiggle.FirstDelay };
+        _coffeeTimer.Tick += (_, _) =>
         {
-            ModeTabs.SelectedIndex = ViewModel.ModeIndex;
-            ModeTabs.SelectionChanged += ModeTabs_SelectionChanged;
+            _coffeeTimer.Interval = CoffeeWiggle.Interval;
+            _coffeeStart = DateTime.UtcNow;
+            _coffeeFrames.Start();
         };
+        _coffeeTimer.Start();
     }
 
-    private void ModeTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (ModeTabs.SelectedIndex >= 0)
-        {
-            ViewModel.ModeIndex = ModeTabs.SelectedIndex;
-        }
-    }
-
-    protected override void OnClosing(WindowClosingEventArgs e)
-    {
-        // Chiudendo, il TabStrip può cambiare selezione: non deve arrivare al ViewModel (che resta alla finestra nuova).
-        ModeTabs.SelectionChanged -= ModeTabs_SelectionChanged;
-        base.OnClosing(e);
-    }
+    private readonly DispatcherTimer _coffeeTimer;
+    private readonly DispatcherTimer _coffeeFrames;
+    private DateTime _coffeeStart;
 
     protected override void OnClosed(EventArgs e)
     {
+        _coffeeTimer.Stop();
+        _coffeeFrames.Stop();
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         base.OnClosed(e);
     }
@@ -114,6 +114,10 @@ public sealed partial class MainWindow : Window
         {
             UpdateDateHint();
         }
+        if (e.PropertyName is nameof(MainViewModel.IsBatchMode))
+        {
+            UpdateModeTabs();
+        }
     }
 
     private void UpdateDateHint()
@@ -128,6 +132,63 @@ public sealed partial class MainWindow : Window
         }
         DateHintBar.Message = Strings.Current.CreationDateHint;
         DateHintBar.IsOpen = true;
+    }
+
+    // ---- Schede della modalità e caffè ---------------------------------------------------------------------------
+
+    private void MediaTab_Click(object? sender, RoutedEventArgs e) => ViewModel.ModeIndex = 0;
+
+    private void BatchTab_Click(object? sender, RoutedEventArgs e) => ViewModel.ModeIndex = 1;
+
+    private void UpdateModeTabs()
+    {
+        // La scheda scelta si riempie del suo colore (stili "selected" nell'axaml).
+        MediaTab.Classes.Set("selected", ViewModel.IsMediaMode);
+        BatchTab.Classes.Set("selected", ViewModel.IsBatchMode);
+    }
+
+    private void CoffeeFrame()
+    {
+        var elapsed = DateTime.UtcNow - _coffeeStart;
+        var (angle, rise, opacity) = CoffeeWiggle.At(elapsed);
+        ((RotateTransform)CoffeeCup.RenderTransform!).Angle = angle;
+        ((TranslateTransform)CoffeeSteam.RenderTransform!).Y = -rise;
+        CoffeeSteam.Opacity = opacity;
+        if (elapsed >= CoffeeWiggle.Duration)
+        {
+            _coffeeFrames.Stop();
+        }
+    }
+
+    private async void Coffee_Click(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new FAContentDialog
+        {
+            Title = Strings.Current.DonateTitle,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                MaxWidth = 420,
+                Children =
+                {
+                    new TextBlock { Text = Strings.Current.DonateText, TextWrapping = TextWrapping.Wrap },
+                    new TextBlock
+                    {
+                        Text = Strings.Current.DonateNote,
+                        TextWrapping = TextWrapping.Wrap,
+                        Classes = { "caption" },
+                        Foreground = this.FindResource("TextFillColorSecondaryBrush") as IBrush,
+                    },
+                },
+            },
+            PrimaryButtonText = Strings.Current.DonateButton,
+            CloseButtonText = Strings.Current.DonateLater,
+            DefaultButton = FAContentDialogButton.Primary,
+        };
+        if (await dialog.ShowAsync(this) == FAContentDialogResult.Primary)
+        {
+            App.Services.GetRequiredService<IShellService>().OpenUrl(AppLinks.Donate);
+        }
     }
 
     // ---- Regole della modalità "Rinomina file" ----------------------------------------------------------------

@@ -53,6 +53,42 @@
                 <Setter Property="BorderThickness" Value="0" />
             </Style>
 
+            <!-- Schede della modalità: colori e scheda scelta li applica MainWindow (ApplyModeTabs), come in Renamr.Linux. -->
+            <Style x:Key="ModeTabStyle" TargetType="Button">
+                <Setter Property="Padding" Value="8,6,16,6" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-3" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <ContentPresenter x:Name="ContentPresenter"
+                                              Background="{TemplateBinding Background}"
+                                              BorderBrush="{TemplateBinding BorderBrush}"
+                                              BorderThickness="{TemplateBinding BorderThickness}"
+                                              CornerRadius="{TemplateBinding CornerRadius}"
+                                              Padding="{TemplateBinding Padding}"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Foreground="{TemplateBinding Foreground}"
+                                              AutomationProperties.AccessibilityView="Raw" />
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="ModeTabIconStyle" TargetType="Border">
+                <Setter Property="Width" Value="34" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+
             <!-- Numero di versione accanto al logo -->
             <Style x:Key="VersionPillStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />

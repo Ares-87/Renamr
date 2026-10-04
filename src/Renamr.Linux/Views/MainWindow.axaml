@@ -26,11 +26,51 @@
         <Style Selector="TextBlock.detail.caution"><Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" /></Style>
         <Style Selector="TextBlock.detail.critical"><Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" /></Style>
         <Style Selector="TextBlock.detail.neutral"><Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" /></Style>
-        <Style Selector="TabStrip.mode > TabStripItem">
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="MinHeight" Value="36" />
-            <Setter Property="Padding" Value="4,0,16,0" />
+        <!-- Schede della modalità: ognuna col suo colore e la sua icona, quella scelta piena (come Renamr.App). -->
+        <Style Selector="Button.modeTab">
+            <Setter Property="Padding" Value="8,6,16,6" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"
+                                      Padding="{TemplateBinding Padding}"
+                                      Content="{TemplateBinding Content}"
+                                      Foreground="{TemplateBinding Foreground}" />
+                </ControlTemplate>
+            </Setter>
         </Style>
+        <Style Selector="Button.modeTab:disabled"><Setter Property="Opacity" Value="0.55" /></Style>
+        <Style Selector="Button.modeTab Border.modeIcon">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+        <Style Selector="Button.modeTab TextBlock.modeHint">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.75" />
+        </Style>
+        <Style Selector="Button.modeTab.media"><Setter Property="Background" Value="#1A2F6BFF" /><Setter Property="BorderBrush" Value="#552F6BFF" /></Style>
+        <Style Selector="Button.modeTab.media:pointerover"><Setter Property="Background" Value="#302F6BFF" /></Style>
+        <Style Selector="Button.modeTab.media Border.modeIcon"><Setter Property="Background" Value="#302F6BFF" /></Style>
+        <Style Selector="Button.modeTab.media ctl|FASymbolIcon"><Setter Property="Foreground" Value="#2F6BFF" /></Style>
+        <Style Selector="Button.modeTab.batch"><Setter Property="Background" Value="#1AE8590C" /><Setter Property="BorderBrush" Value="#55E8590C" /></Style>
+        <Style Selector="Button.modeTab.batch:pointerover"><Setter Property="Background" Value="#30E8590C" /></Style>
+        <Style Selector="Button.modeTab.batch Border.modeIcon"><Setter Property="Background" Value="#30E8590C" /></Style>
+        <Style Selector="Button.modeTab.batch ctl|FASymbolIcon"><Setter Property="Foreground" Value="#E8590C" /></Style>
+        <!-- Scheda scelta: piena del suo colore, testo e icona bianchi. Dopo le altre, così vince. -->
+        <Style Selector="Button.modeTab.selected"><Setter Property="Foreground" Value="White" /></Style>
+        <Style Selector="Button.modeTab.media.selected"><Setter Property="Background" Value="#2F6BFF" /><Setter Property="BorderBrush" Value="#2F6BFF" /></Style>
+        <Style Selector="Button.modeTab.batch.selected"><Setter Property="Background" Value="#E8590C" /><Setter Property="BorderBrush" Value="#E8590C" /></Style>
+        <Style Selector="Button.modeTab.selected Border.modeIcon"><Setter Property="Background" Value="#38FFFFFF" /></Style>
+        <Style Selector="Button.modeTab.selected ctl|FASymbolIcon"><Setter Property="Foreground" Value="White" /></Style>
+        <Style Selector="Button.modeTab.selected TextBlock.modeHint"><Setter Property="Opacity" Value="0.9" /></Style>
         <Style Selector="Border.ruleCard">
             <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
@@ -99,14 +139,51 @@
                        Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
         </Grid>
 
-        <!-- ═══ Modalità a sinistra, impostazioni a destra: sempre a portata, in ogni fase ═══ -->
-        <Grid Grid.Row="1" Margin="20,0,24,4" ColumnDefinitions="*,Auto">
-            <!-- La scelta si collega nel code-behind dopo il caricamento: così ricreare la finestra (cambio di lingua) non cambia modalità. -->
-            <TabStrip x:Name="ModeTabs" Classes="mode" IsEnabled="{Binding !IsBusy}">
-                <TabStripItem Content="{l:Tr ModeMedia}" ToolTip.Tip="{l:Tr ModeMediaTip}" />
-                <TabStripItem Content="{l:Tr ModeBatch}" ToolTip.Tip="{l:Tr ModeBatchTip}" />
-            </TabStrip>
-            <Button Grid.Column="1" Classes="icon" Click="Settings_Click" VerticalAlignment="Center"
+        <!-- ═══ Modalità a sinistra, caffè e impostazioni a destra: sempre a portata, in ogni fase ═══ -->
+        <Grid Grid.Row="1" Margin="20,4,24,8" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="MediaTab" Classes="modeTab media" Click="MediaTab_Click" IsEnabled="{Binding !IsBusy}"
+                        ToolTip.Tip="{l:Tr ModeMediaTip}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Classes="modeIcon" Width="44">
+                            <StackPanel Orientation="Horizontal" Spacing="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <ctl:FASymbolIcon Symbol="Video" FontSize="17" />
+                                <ctl:FASymbolIcon Symbol="Audio" FontSize="15" />
+                            </StackPanel>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{l:Tr ModeMedia}" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Classes="modeHint" Text="{l:Tr ModeMediaHint}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="BatchTab" Classes="modeTab batch" Click="BatchTab_Click" IsEnabled="{Binding !IsBusy}"
+                        ToolTip.Tip="{l:Tr ModeBatchTip}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Classes="modeIcon">
+                            <ctl:FASymbolIcon Symbol="Rename" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{l:Tr ModeBatch}" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Classes="modeHint" Text="{l:Tr ModeBatchHint}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <!-- Offri un caffè: la tazzina ogni tanto oscilla per farsi notare (CoffeeWiggle). -->
+            <Button Grid.Column="1" Classes="icon" Click="Coffee_Click" VerticalAlignment="Center" ToolTip.Tip="{l:Tr Donate}">
+                <Canvas x:Name="CoffeeCup" Width="24" Height="24" RenderTransformOrigin="50%,80%">
+                    <Canvas.RenderTransform><RotateTransform /></Canvas.RenderTransform>
+                    <Path x:Name="CoffeeSteam" Opacity="0.55" Stroke="#D9822B" StrokeThickness="1.5" StrokeLineCap="Round"
+                          Data="M7,7.5 C5.8,6 8.2,4.8 7,3 M10.5,7.5 C9.3,6 11.7,4.8 10.5,3 M14,7.5 C12.8,6 15.2,4.8 14,3">
+                        <Path.RenderTransform><TranslateTransform /></Path.RenderTransform>
+                    </Path>
+                    <Path Fill="#D9822B" Data="M3.5,9.5 H17.5 V14 A5,5 0 0 1 12.5,19 H8.5 A5,5 0 0 1 3.5,14 Z" />
+                    <Path Stroke="#D9822B" StrokeThickness="1.6" StrokeLineCap="Round"
+                          Data="M17.5,11 H18.75 A2.25,2.25 0 0 1 18.75,15.5 H17 M2.5,21.2 H18.5" />
+                </Canvas>
+            </Button>
+            <Button Grid.Column="2" Classes="icon" Click="Settings_Click" VerticalAlignment="Center"
                     ToolTip.Tip="{l:Tr Settings}" IsEnabled="{Binding !IsBusy}">
                 <ctl:FASymbolIcon Symbol="Settings" FontSize="18" />
             </Button>
