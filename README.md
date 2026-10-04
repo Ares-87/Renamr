@@ -19,10 +19,10 @@
   <a href="https://www.paypal.com/donate/?hosted_button_id=VU7PLDUSY9BHQ"><img src="https://img.shields.io/badge/%E2%98%95%20Buy%20me%20a%20coffee-PayPal-0070BA?logo=paypal&logoColor=white" alt="Buy me a coffee with PayPal"></a>
 </p>
 
-![Renamr previewing a library of movies](docs/screenshots/media-preview.png)
+![Renamr on Windows previewing a library of movies](docs/screenshots/windows-media-preview.png)
 
-Renamr takes a folder full of names like `Bugonia.2025.iTA-ENG.WEBDL.2160p.HEVC.HDR.x265-CYBER.mkv`, looks every file up in
-the online movie, TV and music databases, and turns it into `Bugonia (2025) [2160p].mkv`. It also writes the real release
+Renamr takes a folder full of untidy names like `bugonia_2025.mkv`, looks every file up in the online movie, TV and music
+databases, and turns it into a clean `Bugonia (2025).mkv`. It also writes the real release
 date into the file system and into the file's own tags, so your library sorts by the date the film came out, not the
 date you downloaded it. Nothing on disk changes until you press **Start Renaming**, and every rename can be undone.
 
@@ -50,7 +50,7 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 **Movies, series and music**
 
 - **Automatic recognition** of movies, TV episodes (`S01E02`, `1x02`), anime with absolute numbering and music, from
-  messy scene names: resolution, codecs, HDR, release groups, language tags and other noise are stripped before searching.
+  untidy file names: dots, underscores, technical tags and other clutter are cleaned up before searching.
 - **Seven online databases with automatic fallback**: TMDb, OMDb, TheTVDB, TVmaze, AniDB, AcoustID and MusicBrainz. If one
   source finds nothing or is unreachable the next one is tried, and the preview tells you when a database rejected your key.
 - **Titles in your language**: choose the title language (for example `it-IT`, `de-DE`, `en-US`) and every source returns
@@ -91,10 +91,8 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 | ![Windows: start screen with the two colored mode tabs](docs/screenshots/windows-start.png) | ![Windows: Rename files mode with a pattern rule](docs/screenshots/windows-rename-files.png) |
 | **Start screen.** The colored tabs at the top switch between *Movies, Series and Music* and *Rename files*; the coffee cup next to the gear opens the donation message. | **Rename files.** Rules on the left, live preview on the right. |
 
-![Windows: preview of a movie library with low-confidence matches to check](docs/screenshots/windows-media-preview.png)
-
-**Movies preview.** Matches below the confidence threshold are marked *Low confidence* and only renamed if you tick
-**Include low confidence**.
+The movies preview at the top of this page is also from Windows: matches below the confidence threshold are marked
+*Low confidence* and only renamed if you tick **Include low confidence**.
 
 ### Linux
 
@@ -102,8 +100,10 @@ The same movies and photos as the Windows screenshots, with the interface in Eng
 
 | | |
 |---|---|
-| ![Start screen](docs/screenshots/start.png) | ![Right-click menu with name format presets](docs/screenshots/name-format-menu.png) |
-| **Start screen.** Drop a folder or pick one; choose the title language. | **Right-click menu.** Switch the name format or the title language for the whole list in one click. |
+| ![Movies preview](docs/screenshots/media-preview.png) | ![Right-click menu with name format presets](docs/screenshots/name-format-menu.png) |
+| **Movies preview.** Each file with the title, release date and confidence found online. | **Right-click menu.** Switch the name format or the title language for the whole list in one click. |
+| ![Start screen](docs/screenshots/start.png) | |
+| **Start screen.** Drop a folder or pick one; choose the title language. | |
 | ![Renaming completed with an Undo button](docs/screenshots/renamed-undo.png) | ![Rename files mode with a pattern and an extension rule](docs/screenshots/rename-files.png) |
 | **After renaming.** Every row shows its result, and **Undo rename** restores the original names. | **Rename files.** The photos become `Milano - 2023-06-29 - 001.jpg` with a pattern rule and a lowercase extension rule. |
 | ![Settings: name formats](docs/screenshots/settings-formats.png) | ![Settings: metadata to write](docs/screenshots/settings-metadata.png) |
@@ -207,7 +207,7 @@ Placeholders are written in braces, with an optional number format after a colon
 | `{Year}`, `{Release Date}` | Release year / full date |
 | `{Season}`, `{Episode}`, `{Absolute}` | Numbers, e.g. `{Season:00}` → `01`, `{Absolute:000}` → `005` |
 | `{Episode Title}` | Episode title |
-| `{Resolution}`, `{Source}`, `{Video Codec}`, `{Audio Codec}`, `{HDR}`, `{Group}` | Taken from the original file name |
+| `{Resolution}`, `{Video Codec}`, `{Audio Codec}`, `{HDR}` | Taken from the original file name, when present |
 | `{Artist}`, `{Album Artist}`, `{Album}`, `{Track}`, `{Disc}` | Music |
 | `{IMDb}`, `{Provider}`, `{Id}` | IMDb id, source database and its id |
 
@@ -271,7 +271,7 @@ shares. On ext4, Btrfs, XFS and exFAT the creation date stays as it is, and the 
 - Tags are written to a temporary copy that replaces the original only when complete: a crash never leaves a half-written file.
 - Renames never overwrite an existing file; two files can't end up with the same name.
 - Every path is checked against the folder you opened (no `..` tricks, no symlinks or junctions out of it).
-- Read-only files are handled (the attribute is restored afterwards); files locked by a player or a torrent client are skipped
+- Read-only files are handled (the attribute is restored afterwards); files locked by a player or another program are skipped
   with an error on their row.
 - Every rename is recorded in a journal, so **Undo** works even after the app is closed or crashes.
 
