@@ -23,6 +23,9 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- Le risorse XAML in resources.pri invece di Renamr.pri: senza pacchetto, MRT Core cerca resources.pri e poi
+         "<nome dell'exe>.pri", quindi l'exe unico rinominato (Renamr-1.12.4-win-x64.exe) non le trovava e si chiudeva. -->
+    <ProjectPriFileName>resources.pri</ProjectPriFileName>
 
     <!-- Il Toolkit MVVM su WinRT richiede proprietà partial (AOT-friendly): C# 14 con .NET 10. -->
     <LangVersion>latest</LangVersion>
