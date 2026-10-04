@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Renamr
+GenericName=File renamer
+Comment=Recognise, rename and date movies, series and music, or batch-rename any files
+Exec=Renamr %f
+Icon=renamr
+Terminal=false
+Categories=Utility;AudioVideo;FileTools;

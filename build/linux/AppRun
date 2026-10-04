@@ -1,0 +1,4 @@
+#!/bin/sh
+# Entry point of the AppImage: starts Renamr from the mounted image, passing on any folder given on the command line.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/bin/Renamr" "$@"

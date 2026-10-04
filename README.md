@@ -92,35 +92,45 @@ texts and flow.
 
 ## Download and install
 
-Download the package for your system from the [latest release](https://github.com/Ares-87/Renamr/releases/latest).
-Everything needed is inside: there is no installer and no .NET runtime to install.
+Download Renamr from the [latest release](https://github.com/Ares-87/Renamr/releases/latest). There is no installer and
+no .NET runtime to install.
+
+**One file, double click.** The simplest choice: a single file that starts Renamr directly.
 
 | System | File |
 |---|---|
-| Windows 10 (1809 or later) / Windows 11, Intel or AMD | `Renamr-<version>-win-x64.zip` |
-| Windows 11 on ARM | `Renamr-<version>-win-arm64.zip` |
-| Linux x64 | `Renamr-<version>-linux-x64.tar.gz` |
-| Linux ARM64 | `Renamr-<version>-linux-arm64.tar.gz` |
+| Windows 10 (1809 or later) / Windows 11, Intel or AMD | `Renamr-<version>-win-x64.exe` |
+| Windows 11 on ARM | `Renamr-<version>-win-arm64.exe` |
+| Linux x64 | `Renamr-<version>-linux-x64.AppImage` |
+| Linux ARM64 | `Renamr-<version>-linux-arm64.AppImage` |
+
+- **Windows**: double-click the `.exe`. The builds are not code-signed, so the first time Windows SmartScreen may ask you
+  to confirm (**More info → Run anyway**). The first start unpacks the app into a temporary folder and takes a few seconds
+  longer.
+- **Linux**: allow the AppImage to run once (file properties → *Allow executing file as program*, or
+  `chmod +x Renamr-*.AppImage`), then double-click it. From a terminal you can pass a folder to open:
+  `./Renamr-<version>-linux-x64.AppImage /path/to/library`.
+
+**Folder packages.** The same app as a folder to extract; it starts a little faster.
+
+| System | File |
+|---|---|
+| Windows x64 / ARM64 | `Renamr-<version>-win-x64.zip` / `Renamr-<version>-win-arm64.zip` |
+| Linux x64 / ARM64 | `Renamr-<version>-linux-x64.tar.gz` / `Renamr-<version>-linux-arm64.tar.gz` |
 | Source code | `Source code (zip)` / `Source code (tar.gz)` |
-
-**Windows**
-
-1. Extract the zip anywhere (for example `C:\Programs\Renamr`).
-2. Run `Renamr.exe`. The builds are not code-signed, so the first time Windows SmartScreen may ask you to confirm
-   (**More info → Run anyway**).
-3. Optional, for recognizing songs by their sound: download `fpcalc.exe` from
-   [Chromaprint](https://acoustid.org/chromaprint) and put it in the `Tools` folder next to `Renamr.exe`.
-
-**Linux**
 
 ```bash
 tar -xzf Renamr-<version>-linux-x64.tar.gz
 ./Renamr/Renamr                      # or: ./Renamr/Renamr /path/to/library  to open a folder straight away
-sudo apt install libchromaprint-tools   # optional: provides fpcalc for recognizing songs by their sound
 ```
 
-The Linux app needs a desktop session (X11, or Wayland with XWayland). `Renamr/renamr.png` is the app icon if you want to add a
-launcher.
+On Windows, extract the zip anywhere (for example `C:\Programs\Renamr`) and run `Renamr.exe`.
+
+**Recognizing songs by their sound** (optional) needs `fpcalc` from [Chromaprint](https://acoustid.org/chromaprint): on
+Windows put `fpcalc.exe` next to `Renamr.exe` (or in a `Tools` folder beside it), on Linux install it with
+`sudo apt install libchromaprint-tools`.
+
+The Linux app needs a desktop session (X11, or Wayland with XWayland).
 
 ## Getting started
 
@@ -257,7 +267,7 @@ dotnet run --project src/Renamr.Linux                  # or: dotnet run --projec
 dotnet publish src/Renamr.Linux -c Release -r linux-x64 --self-contained -o out/linux
 ```
 
-The version shown in the title bar (`Renamr v1.10.1`, with the commit in the tooltip) comes from `<Version>` in
+The version shown in the title bar (`Renamr v1.11.0`, with the commit in the tooltip) comes from `<Version>` in
 `Directory.Build.props` and goes up with every pull request.
 
 ## Publishing a release
@@ -266,11 +276,12 @@ The [Build and release](.github/workflows/release.yml) workflow builds and tests
 `main`, on Windows and Linux runners. To publish a release, push a tag matching the version in `Directory.Build.props`:
 
 ```bash
-git tag v1.10.1
-git push origin v1.10.1
+git tag v1.11.0
+git push origin v1.11.0
 ```
 
-The workflow then builds the Windows (x64, ARM64) and Linux (x64, ARM64) packages and attaches them to a new GitHub release
+The workflow then builds the Windows (x64, ARM64) and Linux (x64, ARM64) packages, both as one file (`.exe`,
+`.AppImage`) and as folders (`.zip`, `.tar.gz`), and attaches them to a new GitHub release
 with generated release notes. GitHub adds the source code archives on its own. A tag that doesn't match the version stops the
 workflow.
 
