@@ -129,9 +129,11 @@ jobs:
         run: |
           New-Item -ItemType Directory smoke | Out-Null
           ./build/windows/smoke-test.ps1 -Exe (Resolve-Path out/Renamr/Renamr.exe) -ScreenshotPath smoke/folder.png
+          # Test the single file under the name it has in the release, as people download it.
           New-Item -ItemType Directory single-test | Out-Null
-          Copy-Item Renamr-*-win-x64.exe single-test/Renamr.exe
-          ./build/windows/smoke-test.ps1 -Exe (Resolve-Path single-test/Renamr.exe) -ScreenshotPath smoke/single-file.png
+          Copy-Item Renamr-*-win-x64.exe single-test/
+          $single = Get-ChildItem single-test/Renamr-*-win-x64.exe | Select-Object -First 1
+          ./build/windows/smoke-test.ps1 -Exe $single.FullName -ScreenshotPath smoke/single-file.png
       - uses: actions/upload-artifact@v4
         if: always() && matrix.platform == 'x64'
         with:
