@@ -19,10 +19,10 @@
   <a href="https://www.paypal.com/donate/?hosted_button_id=VU7PLDUSY9BHQ"><img src="https://img.shields.io/badge/%E2%98%95%20Buy%20me%20a%20coffee-PayPal-0070BA?logo=paypal&logoColor=white" alt="Buy me a coffee with PayPal"></a>
 </p>
 
-![Renamr previewing a library of movies and series](docs/screenshots/media-preview.png)
+![Renamr previewing a library of movies](docs/screenshots/media-preview.png)
 
-Renamr takes a folder full of names like `Oppenheimer.2023.2160p.UHD.BluRay.x265.HDR-DDN.mkv`, looks every file up in the
-online movie, TV and music databases, and turns it into `Oppenheimer (2023) [2160p].mkv`. It also writes the real release
+Renamr takes a folder full of names like `Bugonia.2025.iTA-ENG.WEBDL.2160p.HEVC.HDR.x265-CYBER.mkv`, looks every file up in
+the online movie, TV and music databases, and turns it into `Bugonia (2025) [2160p].mkv`. It also writes the real release
 date into the file system and into the file's own tags, so your library sorts by the date the film came out, not the
 date you downloaded it. Nothing on disk changes until you press **Start Renaming**, and every rename can be undone.
 
@@ -98,15 +98,14 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 
 ### Linux
 
-Taken from an earlier version (1.10) with the interface in English: the layout and flow are the same, the mode tabs are
-now the colored ones shown above.
+The same movies and photos as the Windows screenshots, with the interface in English and the light theme.
 
 | | |
 |---|---|
 | ![Start screen](docs/screenshots/start.png) | ![Right-click menu with name format presets](docs/screenshots/name-format-menu.png) |
 | **Start screen.** Drop a folder or pick one; choose the title language. | **Right-click menu.** Switch the name format or the title language for the whole list in one click. |
 | ![Renaming completed with an Undo button](docs/screenshots/renamed-undo.png) | ![Rename files mode with a pattern and an extension rule](docs/screenshots/rename-files.png) |
-| **After renaming.** Every row shows its result, and **Undo rename** restores the original names. | **Rename files.** Rules on the left, live preview on the right. |
+| **After renaming.** Every row shows its result, and **Undo rename** restores the original names. | **Rename files.** The photos become `Milano - 2023-06-29 - 001.jpg` with a pattern rule and a lowercase extension rule. |
 | ![Settings: name formats](docs/screenshots/settings-formats.png) | ![Settings: metadata to write](docs/screenshots/settings-metadata.png) |
 | **Settings: name formats** with a live example under each one, and the API keys. | **Settings: metadata to write.** Pick exactly which fields end up in your files. |
 
