@@ -135,10 +135,17 @@ public sealed class AcoustIdProvider(HttpClient http, ISettingsStore settings) :
     private static string? FindFpcalc()
     {
         var exe = OperatingSystem.IsWindows() ? "fpcalc.exe" : "fpcalc";
-        var local = Path.Combine(AppContext.BaseDirectory, "Tools", exe);
-        if (File.Exists(local))
+        // Il Renamr.exe a file singolo gira da una cartella temporanea: si cerca anche accanto all'eseguibile vero.
+        var folders = new[] { AppContext.BaseDirectory, Path.GetDirectoryName(Environment.ProcessPath) }.OfType<string>();
+        foreach (var folder in folders)
         {
-            return local;
+            foreach (var local in new[] { Path.Combine(folder, "Tools", exe), Path.Combine(folder, exe) })
+            {
+                if (File.Exists(local))
+                {
+                    return local;
+                }
+            }
         }
         return (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)

@@ -68,10 +68,27 @@ jobs:
           cp assets/brand/renamr-icon-512.png out/Renamr/renamr.png
           name=Renamr-${{ needs.version.outputs.version }}-${{ matrix.rid }}
           tar -czf "$name.tar.gz" -C out Renamr
+      - name: Build the AppImage
+        run: |
+          curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          rm out/Renamr/renamr.png
+          APPIMAGETOOL=$PWD/appimagetool build/linux/make-appimage.sh out/Renamr ${{ matrix.rid }} \
+            "Renamr-${{ needs.version.outputs.version }}-${{ matrix.rid }}.AppImage"
+      - name: Smoke-test the AppImage
+        if: matrix.rid == 'linux-x64'
+        run: |
+          sudo apt-get install -y -qq xvfb > /dev/null
+          export HOME=$(mktemp -d)
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a timeout 20 ./Renamr-*-linux-x64.AppImage && code=0 || code=$?
+          # timeout ends a healthy app with 124; anything else means it crashed or quit by itself.
+          echo "exit code $code"; test "$code" -eq 124
       - uses: actions/upload-artifact@v4
         with:
           name: Renamr-${{ matrix.rid }}
-          path: Renamr-*.tar.gz
+          path: |
+            Renamr-*.tar.gz
+            Renamr-*.AppImage
           if-no-files-found: error
 
   windows:
@@ -97,10 +114,36 @@ jobs:
         run: |
           $rid = if ('${{ matrix.platform }}' -eq 'x64') { 'win-x64' } else { 'win-arm64' }
           Compress-Archive -Path out/Renamr -DestinationPath "Renamr-${{ needs.version.outputs.version }}-$rid.zip"
+      - name: Publish the single-file Renamr.exe
+        shell: pwsh
+        run: |
+          $rid = if ('${{ matrix.platform }}' -eq 'x64') { 'win-x64' } else { 'win-arm64' }
+          dotnet publish src/Renamr.App -c Release -r $rid -p:Platform=${{ matrix.platform }} --self-contained -o out/single `
+            -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem out/single | Format-Table Name, Length
+          Copy-Item out/single/Renamr.exe "Renamr-${{ needs.version.outputs.version }}-$rid.exe"
+      - name: Smoke-test both builds
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory smoke | Out-Null
+          ./build/windows/smoke-test.ps1 -Exe (Resolve-Path out/Renamr/Renamr.exe) -ScreenshotPath smoke/folder.png
+          New-Item -ItemType Directory single-test | Out-Null
+          Copy-Item Renamr-*-win-x64.exe single-test/Renamr.exe
+          ./build/windows/smoke-test.ps1 -Exe (Resolve-Path single-test/Renamr.exe) -ScreenshotPath smoke/single-file.png
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.platform == 'x64'
+        with:
+          name: smoke-test-windows
+          path: smoke/*.png
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: Renamr-${{ matrix.platform }}-windows
-          path: Renamr-*.zip
+          path: |
+            Renamr-*.zip
+            Renamr-*.exe
           if-no-files-found: error
 
   release:
@@ -113,6 +156,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: Renamr-*
           merge-multiple: true
       - run: ls -la dist
       - uses: softprops/action-gh-release@v2
@@ -122,13 +166,16 @@ jobs:
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
           body: |
+            **One file, double click** (nothing to extract or install):
+
             | System | Download |
             |---|---|
-            | Windows 10/11, Intel or AMD | `Renamr-${{ needs.version.outputs.version }}-win-x64.zip` |
-            | Windows 11 on ARM | `Renamr-${{ needs.version.outputs.version }}-win-arm64.zip` |
-            | Linux x64 | `Renamr-${{ needs.version.outputs.version }}-linux-x64.tar.gz` |
-            | Linux ARM64 | `Renamr-${{ needs.version.outputs.version }}-linux-arm64.tar.gz` |
+            | Windows 10/11, Intel or AMD | `Renamr-${{ needs.version.outputs.version }}-win-x64.exe` |
+            | Windows 11 on ARM | `Renamr-${{ needs.version.outputs.version }}-win-arm64.exe` |
+            | Linux x64 | `Renamr-${{ needs.version.outputs.version }}-linux-x64.AppImage` |
+            | Linux ARM64 | `Renamr-${{ needs.version.outputs.version }}-linux-arm64.AppImage` |
 
-            No installer and no .NET runtime needed: extract and run `Renamr.exe` (Windows) or `Renamr/Renamr` (Linux).
+            On Linux, allow the AppImage to run once (file properties → *Allow executing as program*, or `chmod +x`).
+            The same builds as a folder are in the `.zip` (Windows) and `.tar.gz` (Linux) packages: they start a little faster.
             See the [README](https://github.com/${{ github.repository }}#download-and-install) for details.
           files: dist/*
