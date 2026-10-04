@@ -11,7 +11,12 @@
   <a href="https://github.com/Ares-87/Renamr/releases/latest"><b>Download the latest release</b></a> ·
   <a href="#features">Features</a> ·
   <a href="#getting-started">Getting started</a> ·
-  <a href="#building-from-source">Build from source</a>
+  <a href="#building-from-source">Build from source</a> ·
+  <a href="#-support-the-project-buy-me-a-coffee">☕ Buy me a coffee</a>
+</p>
+
+<p align="center">
+  <a href="https://www.paypal.com/donate/?hosted_button_id=VU7PLDUSY9BHQ"><img src="https://img.shields.io/badge/%E2%98%95%20Buy%20me%20a%20coffee-PayPal-0070BA?logo=paypal&logoColor=white" alt="Buy me a coffee with PayPal"></a>
 </p>
 
 ![Renamr previewing a library of movies and series](docs/screenshots/media-preview.png)
@@ -29,13 +34,13 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [Download and install](#download-and-install)
+- [☕ Support the project (buy me a coffee)](#-support-the-project-buy-me-a-coffee)
 - [Getting started](#getting-started)
 - [Data sources and API keys](#data-sources-and-api-keys)
 - [Name formats](#name-formats)
 - [Rename files mode](#rename-files-mode)
 - [What Renamr writes to your files](#what-renamr-writes-to-your-files)
 - [Safety](#safety)
-- [Support the project](#support-the-project)
 - [Building from source](#building-from-source)
 - [Publishing a release](#publishing-a-release)
 - [Project layout](#project-layout)
@@ -79,8 +84,22 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 
 ## Screenshots
 
-The screenshots come from the Linux build with the interface in English. The Windows app (WinUI 3) has the same layout,
-texts and flow.
+### Windows
+
+| | |
+|---|---|
+| ![Windows: start screen with the two colored mode tabs](docs/screenshots/windows-start.png) | ![Windows: Rename files mode with a pattern rule](docs/screenshots/windows-rename-files.png) |
+| **Start screen.** The colored tabs at the top switch between *Movies, Series and Music* and *Rename files*; the coffee cup next to the gear opens the donation message. | **Rename files.** Rules on the left, live preview on the right. |
+
+![Windows: preview of a movie library with low-confidence matches to check](docs/screenshots/windows-media-preview.png)
+
+**Movies preview.** Matches below the confidence threshold are marked *Low confidence* and only renamed if you tick
+**Include low confidence**.
+
+### Linux
+
+Taken from an earlier version (1.10) with the interface in English: the layout and flow are the same, the mode tabs are
+now the colored ones shown above.
 
 | | |
 |---|---|
@@ -132,6 +151,17 @@ Windows put `fpcalc.exe` next to `Renamr.exe` (or in a `Tools` folder beside it)
 `sudo apt install libchromaprint-tools`.
 
 The Linux app needs a desktop session (X11, or Wayland with XWayland).
+
+## ☕ Support the project (buy me a coffee)
+
+Renamr is free and built in spare time. If you like it and would like it to keep being updated and improved, and to see
+new projects come to life, you can buy the developer a coffee:
+
+[![Donate with PayPal](https://img.shields.io/badge/Buy%20me%20a%20coffee-PayPal-0070BA?logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=VU7PLDUSY9BHQ)
+
+The same link is in the app: the small coffee cup next to the Settings gear (it wiggles now and then to say hello) opens a
+short message with a button to the PayPal donation form. Donations are entirely optional and unlock nothing: every feature
+is and stays free.
 
 ## Getting started
 
@@ -247,17 +277,6 @@ shares. On ext4, Btrfs, XFS and exFAT the creation date stays as it is, and the 
 - Every rename is recorded in a journal, so **Undo** works even after the app is closed or crashes.
 
 Settings, journal and caches live in `%LOCALAPPDATA%\Renamr` on Windows and `~/.local/share/Renamr` on Linux.
-
-## Support the project
-
-Renamr is free and built in spare time. If you like it and would like it to keep being updated and improved, and to see
-new projects come to life, you can buy the developer a coffee:
-
-[![Donate with PayPal](https://img.shields.io/badge/Buy%20me%20a%20coffee-PayPal-0070BA?logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=VU7PLDUSY9BHQ)
-
-The same link is in the app: the small coffee cup next to the Settings gear (it wiggles now and then to say hello) opens a
-short message with a button to the PayPal donation form. Donations are entirely optional and unlock nothing: every feature
-is and stays free.
 
 ## Building from source
 
