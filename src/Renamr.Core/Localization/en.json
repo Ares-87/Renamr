@@ -5,6 +5,8 @@
   "ModeMediaTip": "Recognizes movies, TV series, anime and music in online databases, with metadata and release dates",
   "ModeBatch": "Rename files",
   "ModeBatchTip": "Any file: numbering, replacements, capitalization and other rules. Only the name changes",
+  "ModeMediaHint": "Online databases, tags and dates",
+  "ModeBatchHint": "Any file, with your own rules",
 
   "DropTitleMedia": "Drop your library folder here",
   "DropTitleBatch": "Drop a folder here",
@@ -19,6 +21,12 @@
   "TitleLanguage": "Title language",
   "TitleLanguageTip": "Title language: changing it restarts the lookups right away",
   "Settings": "Settings",
+  "Donate": "Buy the developer a coffee",
+  "DonateTitle": "Enjoying Renamr?",
+  "DonateText": "If you like the project and would like it to keep being updated and improved, and to see new projects come to life, buy the developer a coffee.",
+  "DonateNote": "The button opens the PayPal donation form in your browser.",
+  "DonateButton": "Buy a coffee",
+  "DonateLater": "Maybe later",
 
   "BatchFiles": "Files",
   "BatchFilterPlaceholder": "All files (e.g. *.jpg; *.png)",

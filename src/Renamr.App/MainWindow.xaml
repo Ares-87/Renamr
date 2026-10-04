@@ -230,21 +230,70 @@
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
         </Grid>
 
-        <!-- ═══ Modalità a sinistra, impostazioni a destra: sempre a portata, in ogni fase ═══ -->
-        <Grid Grid.Row="1" Margin="16,0,24,4">
+        <!-- ═══ Modalità a sinistra, caffè e impostazioni a destra: sempre a portata, in ogni fase ═══ -->
+        <Grid Grid.Row="1" Margin="20,4,24,8" ColumnSpacing="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <SelectorBar x:Name="ModeBar"
-                         IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
-                         SelectionChanged="ModeBar_SelectionChanged">
-                <SelectorBarItem x:Name="MediaModeItem" Text="{x:Bind loc:Strings.Current.ModeMedia}"
-                                 ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ModeMediaTip}" />
-                <SelectorBarItem x:Name="BatchModeItem" Text="{x:Bind loc:Strings.Current.ModeBatch}"
-                                 ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ModeBatchTip}" />
-            </SelectorBar>
-            <Button Grid.Column="1" Style="{StaticResource RuleIconButtonStyle}" Click="Settings_Click"
+            <!-- Ogni modalità ha colore e icona propri; quella scelta è piena del suo colore (ApplyModeTabs). -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="MediaTab" Style="{StaticResource ModeTabStyle}" Click="MediaTab_Click"
+                        IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind loc:Strings.Current.ModeMedia}"
+                        ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ModeMediaTip}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border x:Name="MediaTabIcon" Style="{StaticResource ModeTabIconStyle}" Width="44">
+                            <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <FontIcon x:Name="MediaTabGlyph1" Glyph="&#xE714;" FontSize="16" />
+                                <FontIcon x:Name="MediaTabGlyph2" Glyph="&#xEC4F;" FontSize="14" />
+                            </StackPanel>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind loc:Strings.Current.ModeMedia}" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Bind loc:Strings.Current.ModeMediaHint}" FontSize="12" Opacity="0.8" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="BatchTab" Style="{StaticResource ModeTabStyle}" Click="BatchTab_Click"
+                        IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind loc:Strings.Current.ModeBatch}"
+                        ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ModeBatchTip}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border x:Name="BatchTabIcon" Style="{StaticResource ModeTabIconStyle}">
+                            <FontIcon x:Name="BatchTabGlyph" Glyph="&#xE8AC;" FontSize="17"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind loc:Strings.Current.ModeBatch}" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Bind loc:Strings.Current.ModeBatchHint}" FontSize="12" Opacity="0.8" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <!-- Offri un caffè: la tazzina ogni tanto oscilla per farsi notare (CoffeeWiggle). -->
+            <Button Grid.Column="1" Style="{StaticResource RuleIconButtonStyle}" Click="Coffee_Click"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="{x:Bind loc:Strings.Current.Donate}"
+                    ToolTipService.ToolTip="{x:Bind loc:Strings.Current.Donate}">
+                <Canvas Width="24" Height="24" RenderTransformOrigin="0.5,0.8">
+                    <Canvas.RenderTransform>
+                        <RotateTransform x:Name="CoffeeTilt" />
+                    </Canvas.RenderTransform>
+                    <Path x:Name="CoffeeSteam" Opacity="0.55" Stroke="#D9822B" StrokeThickness="1.5"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          Data="M7,7.5 C5.8,6 8.2,4.8 7,3 M10.5,7.5 C9.3,6 11.7,4.8 10.5,3 M14,7.5 C12.8,6 15.2,4.8 14,3">
+                        <Path.RenderTransform>
+                            <TranslateTransform x:Name="CoffeeSteamRise" />
+                        </Path.RenderTransform>
+                    </Path>
+                    <Path Fill="#D9822B" Data="M3.5,9.5 H17.5 V14 A5,5 0 0 1 12.5,19 H8.5 A5,5 0 0 1 3.5,14 Z" />
+                    <Path Stroke="#D9822B" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          Data="M17.5,11 H18.75 A2.25,2.25 0 0 1 18.75,15.5 H17 M2.5,21.2 H18.5" />
+                </Canvas>
+            </Button>
+            <Button Grid.Column="2" Style="{StaticResource RuleIconButtonStyle}" Click="Settings_Click"
                     VerticalAlignment="Center"
                     IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
                     ToolTipService.ToolTip="{x:Bind loc:Strings.Current.Settings}">

@@ -5,6 +5,8 @@
   "ModeMediaTip": "Reconhece filmes, séries de TV, anime e música em bases de dados online, com metadados e datas de lançamento",
   "ModeBatch": "Renomear arquivos",
   "ModeBatchTip": "Qualquer arquivo: numeração, substituições, maiúsculas e outras regras. Só o nome muda",
+  "ModeMediaHint": "Bancos de dados online, metadados e datas",
+  "ModeBatchHint": "Qualquer arquivo, com suas regras",
 
   "DropTitleMedia": "Arraste aqui a pasta da sua biblioteca",
   "DropTitleBatch": "Arraste uma pasta aqui",
@@ -19,6 +21,12 @@
   "TitleLanguage": "Idioma dos títulos",
   "TitleLanguageTip": "Idioma dos títulos: ao mudá-lo as buscas recomeçam na hora",
   "Settings": "Configurações",
+  "Donate": "Pague um café ao desenvolvedor",
+  "DonateTitle": "Gosta do Renamr?",
+  "DonateText": "Se você gosta do projeto e quer que ele continue sendo atualizado e melhorado, e ver novos projetos nascerem, pague um café ao desenvolvedor.",
+  "DonateNote": "O botão abre o formulário de doação do PayPal no navegador.",
+  "DonateButton": "Pagar um café",
+  "DonateLater": "Talvez mais tarde",
 
   "BatchFiles": "Arquivos",
   "BatchFilterPlaceholder": "Todos os arquivos (ex. *.jpg; *.png)",
