@@ -1,6 +1,7 @@
 # Builds Renamr for Windows and Linux on every pull request and push to main.
 # A release with the packages attached is published by pushing a tag like "v1.10.1", or by running the
 # workflow by hand on main with "Publish a release" ticked (it then creates the tag v<Version> itself).
+# Ticking "replace" too publishes the same version again: the old release and tag are deleted first.
 # GitHub adds the source code zip and tar.gz to every release on its own.
 name: Build and release
 
@@ -13,6 +14,10 @@ on:
     inputs:
       release:
         description: Publish a release tagged v<Version> from this commit
+        type: boolean
+        default: false
+      replace:
+        description: Replace an existing release (delete v<Version> and its tag, then publish again from this commit)
         type: boolean
         default: false
 
@@ -161,6 +166,11 @@ jobs:
           pattern: Renamr-*
           merge-multiple: true
       - run: ls -la dist
+      - name: Remove the existing release (republish)
+        if: github.event_name == 'workflow_dispatch' && inputs.replace
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete "v${{ needs.version.outputs.version }}" --cleanup-tag --yes -R "${{ github.repository }}" || echo "No release to replace"
       - uses: softprops/action-gh-release@v2
         with:
           name: Renamr ${{ needs.version.outputs.version }}
