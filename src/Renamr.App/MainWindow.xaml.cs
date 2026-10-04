@@ -8,6 +8,7 @@ using Renamr.App.Views;
 using Renamr.Core.Localization;
 using Renamr.Core.Models;
 using Renamr.Core.Templating;
+using Renamr.Presentation.Animation;
 using Renamr.Presentation.Services;
 using Renamr.Presentation.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
@@ -43,17 +44,42 @@ public sealed partial class MainWindow : Window
             presenter.PreferredMinimumHeight = 520;
         }
 
-        // Riparte dall'ultima modalità usata. I clic si ascoltano solo a finestra caricata: un selettore appena creato può
-        // scegliere da solo la prima voce, e ricreando la finestra (cambio di lingua) rimetterebbe "Film, Serie e Musica".
-        ModeBar.SelectedItem = viewModel.IsBatchMode ? BatchModeItem : MediaModeItem;
-        RootGrid.Loaded += (_, _) =>
+        // Riparte dall'ultima modalità usata: le schede seguono il ViewModel, anche ricreando la finestra (cambio di lingua).
+        ApplyModeTabs();
+        viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        foreach (var tab in new[] { MediaTab, BatchTab })
         {
-            ModeBar.SelectedItem = ViewModel.IsBatchMode ? BatchModeItem : MediaModeItem;
-            _modeBarReady = true;
+            tab.PointerEntered += (s, _) => { _hoveredTab = s; ApplyModeTabs(); };
+            tab.PointerExited += (s, _) => { if (_hoveredTab == s) { _hoveredTab = null; } ApplyModeTabs(); };
+        }
+
+        // La tazzina del caffè: prima oscillazione poco dopo l'apertura, poi ogni tanto (se il sistema non ha spento le animazioni).
+        _coffeeFrames = new DispatcherTimer { Interval = CoffeeWiggle.Frame };
+        _coffeeFrames.Tick += (_, _) => CoffeeFrame();
+        _coffeeTimer = new DispatcherTimer { Interval = CoffeeWiggle.FirstDelay };
+        _coffeeTimer.Tick += (_, _) =>
+        {
+            _coffeeTimer.Interval = CoffeeWiggle.Interval;
+            if (SystemUi.AnimationsEnabled)
+            {
+                _coffeeStart = DateTime.UtcNow;
+                _coffeeFrames.Start();
+            }
+        };
+        _coffeeTimer.Start();
+        Closed += (_, _) =>
+        {
+            _coffeeTimer.Stop();
+            _coffeeFrames.Stop();
+            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         };
     }
 
-    private bool _modeBarReady;
+    private static readonly Windows.UI.ViewManagement.UISettings SystemUi = new();
+    private readonly DispatcherTimer _coffeeTimer;
+    private readonly DispatcherTimer _coffeeFrames;
+    private DateTime _coffeeStart;
+    private object? _hoveredTab;
 
     public MainViewModel ViewModel { get; }
 
@@ -106,11 +132,97 @@ public sealed partial class MainWindow : Window
 
     // ---- Modalità e regole di "Rinomina file" -----------------------------------------------------------------
 
-    private void ModeBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    private void MediaTab_Click(object sender, RoutedEventArgs e) => ViewModel.ModeIndex = 0;
+
+    private void BatchTab_Click(object sender, RoutedEventArgs e) => ViewModel.ModeIndex = 1;
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (_modeBarReady && sender.SelectedItem is not null)
+        if (e.PropertyName is nameof(MainViewModel.IsBatchMode) or nameof(MainViewModel.IsBusy))
         {
-            ViewModel.ModeIndex = sender.SelectedItem == BatchModeItem ? 1 : 0;
+            ApplyModeTabs();
+        }
+    }
+
+    // Stessi colori di Renamr.Linux: blu del marchio per film, serie e musica, arancione per "Rinomina file".
+    private static readonly Windows.UI.Color MediaColor = Microsoft.UI.ColorHelper.FromArgb(0xFF, 0x2F, 0x6B, 0xFF);
+    private static readonly Windows.UI.Color BatchColor = Microsoft.UI.ColorHelper.FromArgb(0xFF, 0xE8, 0x59, 0x0C);
+
+    private void ApplyModeTabs()
+    {
+        ApplyModeTab(MediaTab, MediaTabIcon, [MediaTabGlyph1, MediaTabGlyph2], MediaColor, ViewModel.IsMediaMode);
+        ApplyModeTab(BatchTab, BatchTabIcon, [BatchTabGlyph], BatchColor, ViewModel.IsBatchMode);
+    }
+
+    private void ApplyModeTab(Button tab, Border icon, FontIcon[] glyphs, Windows.UI.Color color, bool selected)
+    {
+        var hovered = ReferenceEquals(_hoveredTab, tab) && !ViewModel.IsBusy;
+        tab.Background = Brush(color, selected ? (byte)0xFF : hovered ? (byte)0x30 : (byte)0x1A);
+        tab.BorderBrush = Brush(color, selected ? (byte)0xFF : (byte)0x55);
+        if (selected)
+        {
+            tab.Foreground = Brush(Microsoft.UI.Colors.White, 0xFF);
+        }
+        else
+        {
+            tab.ClearValue(Control.ForegroundProperty); // torna al colore del testo del tema (ModeTabStyle)
+        }
+        tab.Opacity = ViewModel.IsBusy ? 0.55 : 1;
+        icon.Background = selected ? Brush(Microsoft.UI.Colors.White, 0x38) : Brush(color, 0x30);
+        foreach (var glyph in glyphs)
+        {
+            glyph.Foreground = selected ? Brush(Microsoft.UI.Colors.White, 0xFF) : Brush(color, 0xFF);
+        }
+    }
+
+    private static Microsoft.UI.Xaml.Media.SolidColorBrush Brush(Windows.UI.Color color, byte alpha) =>
+        new(Microsoft.UI.ColorHelper.FromArgb(alpha, color.R, color.G, color.B));
+
+    // ---- Offri un caffè ---------------------------------------------------------------------------------------
+
+    private void CoffeeFrame()
+    {
+        var elapsed = DateTime.UtcNow - _coffeeStart;
+        var (angle, rise, opacity) = CoffeeWiggle.At(elapsed);
+        CoffeeTilt.Angle = angle;
+        CoffeeSteamRise.Y = -rise;
+        CoffeeSteam.Opacity = opacity;
+        if (elapsed >= CoffeeWiggle.Duration)
+        {
+            _coffeeFrames.Stop();
+        }
+    }
+
+    private async void Coffee_Click(object sender, RoutedEventArgs e)
+    {
+        var resources = Application.Current.Resources;
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = Strings.Current.DonateTitle,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                MaxWidth = 420,
+                Children =
+                {
+                    new TextBlock { Text = Strings.Current.DonateText, TextWrapping = TextWrapping.Wrap },
+                    new TextBlock
+                    {
+                        Text = Strings.Current.DonateNote,
+                        TextWrapping = TextWrapping.Wrap,
+                        Style = (Style)resources["CaptionTextBlockStyle"],
+                        Foreground = (Microsoft.UI.Xaml.Media.Brush)resources["TextFillColorSecondaryBrush"],
+                    },
+                },
+            },
+            PrimaryButtonText = Strings.Current.DonateButton,
+            CloseButtonText = Strings.Current.DonateLater,
+            DefaultButton = ContentDialogButton.Primary,
+        };
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            App.Services.GetRequiredService<IShellService>().OpenUrl(AppLinks.Donate);
         }
     }
 

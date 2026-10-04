@@ -41,6 +41,8 @@ public sealed class ShellService : IShellService
         var target = File.Exists(path) ? $"/select,\"{path}\"" : $"\"{Path.GetDirectoryName(path)}\"";
         Process.Start(new ProcessStartInfo("explorer.exe", target) { UseShellExecute = true });
     }
+
+    public void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 }
 
 /// <summary>DPAPI legata all'utente Windows corrente: le chiavi API sono leggibili solo da questo account.</summary>

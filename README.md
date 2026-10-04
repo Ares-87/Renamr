@@ -35,6 +35,7 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 - [Rename files mode](#rename-files-mode)
 - [What Renamr writes to your files](#what-renamr-writes-to-your-files)
 - [Safety](#safety)
+- [Support the project](#support-the-project)
 - [Building from source](#building-from-source)
 - [Publishing a release](#publishing-a-release)
 - [Project layout](#project-layout)
@@ -133,6 +134,9 @@ Windows put `fpcalc.exe` next to `Renamr.exe` (or in a `Tools` folder beside it)
 The Linux app needs a desktop session (X11, or Wayland with XWayland).
 
 ## Getting started
+
+Pick the mode with the two colored tabs at the top of the window: the blue **Movies, Series and Music** tab recognizes your
+media online, the orange **Rename files** tab renames any files with your own rules. The selected tab is the filled one.
 
 1. **Open a folder**: drop it on the window or click **Choose folder…**. Renamr scans it (subfolders included) and searches
    the databases. Nothing is renamed yet.
@@ -243,6 +247,17 @@ shares. On ext4, Btrfs, XFS and exFAT the creation date stays as it is, and the 
 - Every rename is recorded in a journal, so **Undo** works even after the app is closed or crashes.
 
 Settings, journal and caches live in `%LOCALAPPDATA%\Renamr` on Windows and `~/.local/share/Renamr` on Linux.
+
+## Support the project
+
+Renamr is free and built in spare time. If you like it and would like it to keep being updated and improved, and to see
+new projects come to life, you can buy the developer a coffee:
+
+[![Donate with PayPal](https://img.shields.io/badge/Buy%20me%20a%20coffee-PayPal-0070BA?logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=VU7PLDUSY9BHQ)
+
+The same link is in the app: the small coffee cup next to the Settings gear (it wiggles now and then to say hello) opens a
+short message with a button to the PayPal donation form. Donations are entirely optional and unlock nothing: every feature
+is and stays free.
 
 ## Building from source
 

@@ -9,6 +9,8 @@ public sealed partial class Strings
     public string ModeMediaTip => Get();
     public string ModeBatch => Get();
     public string ModeBatchTip => Get();
+    public string ModeMediaHint => Get();
+    public string ModeBatchHint => Get();
     public string DropTitleMedia => Get();
     public string DropTitleBatch => Get();
     public string DropHintMedia => Get();
@@ -21,6 +23,12 @@ public sealed partial class Strings
     public string TitleLanguage => Get();
     public string TitleLanguageTip => Get();
     public string Settings => Get();
+    public string Donate => Get();
+    public string DonateTitle => Get();
+    public string DonateText => Get();
+    public string DonateNote => Get();
+    public string DonateButton => Get();
+    public string DonateLater => Get();
     public string BatchFiles => Get();
     public string BatchFilterPlaceholder => Get();
     public string BatchFilterTip => Get();
