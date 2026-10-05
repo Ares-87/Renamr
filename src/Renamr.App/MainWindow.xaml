@@ -91,6 +91,10 @@
                         <TextBox Text="{x:Bind Pattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="{x:Bind loc:Strings.Current.NewNamePlaceholder}" />
                         <TextBlock Text="{x:Bind vm:NewNameRuleViewModel.TokensHelp}" Style="{StaticResource CaptionTextBlockStyle}"
                                    TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                        <Expander Header="{x:Bind loc:Strings.Current.MoreTokens}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <TextBlock Text="{x:Bind vm:NewNameRuleViewModel.MoreTokensHelp}" Style="{StaticResource CaptionTextBlockStyle}"
+                                       TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                        </Expander>
                     </StackPanel>
                 </Border>
             </DataTemplate>

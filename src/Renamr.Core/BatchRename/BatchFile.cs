@@ -8,6 +8,9 @@ public sealed record BatchFile(string Path, long Size, DateTime ModifiedUtc, Dat
     /// <summary>Cartella-recinto del file: vuota = la cartella aperta (vedi RenamePlanEntry.Root).</summary>
     public string? Root { get; init; }
 
+    /// <summary>Dati letti dal contenuto (foto, musica, video); null = non ancora letti, perché nessuna regola li usa.</summary>
+    public FileDetails? Details { get; init; }
+
     /// <summary>Nome senza estensione ("Foto 01" di "Foto 01.JPG").</summary>
     public string Stem => System.IO.Path.GetFileNameWithoutExtension(Path);
 
@@ -24,4 +27,26 @@ public sealed record BatchFile(string Path, long Size, DateTime ModifiedUtc, Dat
 public sealed record BatchRenameResult(BatchFile File, string NewName, string? Error)
 {
     public bool IsValid => Error is null;
+}
+
+/// <summary>
+/// Dati letti (mai scritti) dal contenuto del file per i segnaposto {scatto}, {artista}, {durata}…
+/// Tutti facoltativi: un documento qualsiasi li ha tutti vuoti (<see cref="None"/>).
+/// </summary>
+public sealed record FileDetails
+{
+    public static FileDetails None { get; } = new();
+
+    /// <summary>Data e ora di scatto delle foto (EXIF), ora locale della fotocamera.</summary>
+    public DateTime? DateTaken { get; init; }
+
+    public string? Camera { get; init; }
+    public int? Width { get; init; }
+    public int? Height { get; init; }
+    public TimeSpan? Duration { get; init; }
+    public string? Artist { get; init; }
+    public string? Album { get; init; }
+    public string? Title { get; init; }
+    public uint? Track { get; init; }
+    public uint? Year { get; init; }
 }

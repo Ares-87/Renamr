@@ -26,6 +26,7 @@ public sealed class BatchRenamePlanner
         };
 
         var files = new List<BatchFile>();
+        var details = BatchTokens.NeedsDetails(options.Rules);
         foreach (var info in new DirectoryInfo(boundary.Root).EnumerateFiles("*", enumeration))
         {
             if (info.Name.Contains(".renamr-", StringComparison.OrdinalIgnoreCase) // temporanei nostri
@@ -35,9 +36,25 @@ public sealed class BatchRenamePlanner
             {
                 continue;
             }
-            files.Add(new BatchFile(info.FullName, info.Length, info.LastWriteTimeUtc, info.CreationTimeUtc));
+            var file = new BatchFile(info.FullName, info.Length, info.LastWriteTimeUtc, info.CreationTimeUtc);
+            files.Add(details ? file with { Details = FileDetailsReader.Read(file.Path) } : file);
         }
         return files;
+    }
+
+    /// <summary>
+    /// Una regola ora usa {scatto}, {artista}…: legge il contenuto dei file che non l'hanno ancora letto.
+    /// Restituisce lo stesso elenco se non serve niente, così l'anteprima resta immediata.
+    /// </summary>
+    public static IReadOnlyList<BatchFile> WithDetails(IReadOnlyList<BatchFile> files, BatchRenameOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(options);
+        if (!BatchTokens.NeedsDetails(options.Rules) || files.All(f => f.Details is not null))
+        {
+            return files;
+        }
+        return [.. files.Select(f => f.Details is null ? f with { Details = FileDetailsReader.Read(f.Path) } : f)];
     }
 
     /// <summary>
