@@ -43,11 +43,14 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
 
         // 1) Controlli su ogni file prima di toccare qualunque cosa: percorsi, lock, destinazioni occupate da estranei.
         var pending = new List<int>();
-        var movingSources = todo.Select(i => results[i].SourcePath).ToHashSet(PathComparer);
+        var copies = new List<int>();
+        // Con la copia l'originale resta dov'è: non libera il suo nome.
+        var movingSources = todo.Where(i => !results[i].Copy).Select(i => results[i].SourcePath).ToHashSet(PathComparer);
         foreach (var i in todo)
         {
-            var checkedEntry = boundaries.For(results[i]) is { } boundary
-                ? Check(boundary, results[i], movingSources)
+            var targetBoundary = results[i].TargetRoot is { } targetRoot ? boundaries.For(targetRoot) : boundaries.For(results[i]);
+            var checkedEntry = boundaries.For(results[i]) is { } boundary && targetBoundary is not null
+                ? Check(boundary, targetBoundary, results[i], movingSources)
                 : Failed(results[i], RenamrError.From(RenamrErrorCode.PathOutsideRoot, results[i].SourcePath));
             if (checkedEntry.Status == PlanStatus.Error)
             {
@@ -61,15 +64,44 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
             else
             {
                 results[i] = checkedEntry;
-                pending.Add(i);
+                (checkedEntry.Copy ? copies : pending).Add(i);
             }
         }
-        if (dryRun || pending.Count == 0)
+        if (dryRun || pending.Count + copies.Count == 0)
         {
             return results;
         }
 
-        journal.BeginSession(rootFolder ?? results[pending[0]].Root ?? string.Empty);
+        journal.BeginSession(rootFolder ?? results[pending.Concat(copies).First()].Root ?? string.Empty);
+
+        // 1b) Le copie: nessuna catena possibile, gli originali non si spostano.
+        foreach (var i in copies)
+        {
+            if (ct.IsCancellationRequested)
+            {
+                Finish(i, results[i] with { Status = PlanStatus.Skipped, Error = RenamrError.From(RenamrErrorCode.Cancelled) });
+                continue;
+            }
+            var entry = results[i];
+            CreateFolders(entry, entry.TargetPath!);
+            try
+            {
+                var copied = await io.CopyAsync(entry.SourcePath, entry.TargetPath!, ct).ConfigureAwait(false);
+                if (copied.Succeeded)
+                {
+                    journal.RecordCopy(entry.SourcePath, entry.TargetPath!, RootOf(entry), entry.TargetRoot);
+                    Finish(i, entry with { Status = PlanStatus.Done, Error = null });
+                }
+                else
+                {
+                    Finish(i, Failed(entry, copied.Error!));
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Finish(i, entry with { Status = PlanStatus.Skipped, Error = RenamrError.From(RenamrErrorCode.Cancelled) });
+            }
+        }
 
         // 2) Chi ha la destinazione libera va subito; ogni rinomina può liberare la destinazione di un altro.
         bool progressMade;
@@ -90,6 +122,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
                 pending.Remove(i);
                 movingSources.Remove(entry.SourcePath);
                 progressMade = true;
+                CreateFolders(entry, entry.TargetPath!);
                 Finish(i, await MoveAsync(entry, entry.SourcePath, entry.TargetPath!, ct).ConfigureAwait(false));
             }
         }
@@ -121,6 +154,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
         {
             // Una volta parcheggiato, il file va comunque riportato su un nome vero: niente annullamento a metà.
             var entry = results[i];
+            CreateFolders(entry, entry.TargetPath!);
             var result = await MoveAsync(entry, temp, entry.TargetPath!, CancellationToken.None).ConfigureAwait(false);
             if (result.Status == PlanStatus.Error)
             {
@@ -147,17 +181,39 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
 
         string? RootOf(RenamePlanEntry entry) => entry.Root ?? rootFolder;
 
+        // Le sottocartelle di destinazione create da noi finiscono nel diario: "Annulla" le toglie se restano vuote.
+        void CreateFolders(RenamePlanEntry entry, string target)
+        {
+            var missing = new Stack<string>();
+            for (var dir = Path.GetDirectoryName(target); !string.IsNullOrEmpty(dir) && !Directory.Exists(dir); dir = Path.GetDirectoryName(dir))
+            {
+                missing.Push(dir);
+            }
+            foreach (var dir in missing)
+            {
+                try
+                {
+                    Directory.CreateDirectory(dir);
+                    journal.RecordFolder(dir, entry.TargetRoot ?? RootOf(entry));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    return; // lo spostamento fallirà con il messaggio giusto
+                }
+            }
+        }
+
         bool IsOccupied(string source, string target) =>
             !PathComparer.Equals(source, target) && (File.Exists(target) || Directory.Exists(target));
     }
 
-    private RenamePlanEntry Check(PathBoundary boundary, RenamePlanEntry entry, HashSet<string> movingSources)
+    private RenamePlanEntry Check(PathBoundary boundary, PathBoundary targetBoundary, RenamePlanEntry entry, HashSet<string> movingSources)
     {
         var check = boundary.Validate(entry.SourcePath, out var source);
         var target = string.Empty;
         if (check.Succeeded)
         {
-            check = boundary.Validate(entry.TargetPath!, out target);
+            check = targetBoundary.Validate(entry.TargetPath!, out target);
         }
         if (!check.Succeeded)
         {
@@ -165,7 +221,8 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
         }
         entry = entry with { SourcePath = source, TargetPath = target };
 
-        var probe = io.ProbeExclusiveAccess(source);
+        // Le cartelle non si aprono come file: per loro decide Directory.Move (che rifiuta se qualcosa è in uso).
+        var probe = Directory.Exists(source) ? OperationResult.Ok() : io.ProbeExclusiveAccess(source);
         if (!probe.Succeeded)
         {
             return Failed(entry, probe.Error!);
@@ -189,7 +246,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
             {
                 return Failed(entry, moved.Error!);
             }
-            journal.RecordMove(from, to, entry.Root);
+            journal.RecordMove(from, to, entry.Root, entry.TargetRoot);
             return entry with { Status = PlanStatus.Done, Error = null };
         }
         catch (OperationCanceledException)

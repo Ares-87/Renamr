@@ -68,14 +68,34 @@ public sealed class RenameExecutor(MediaFileProcessor processor, RenameJournal j
         var boundaries = new BoundaryCache(session.Source.Length > 0 ? session.Source : null);
         var errors = new List<RenamrError>();
 
-        foreach (var move in entries.Where(e => e.Kind == "move").Reverse())
+        foreach (var step in entries.Where(e => e.Kind is "move" or "copy" or "folder").Reverse())
         {
-            // Ogni spostamento ricorda la sua cartella-recinto (i file aggiunti a mano possono stare altrove);
-            // i diari scritti prima valgono per la cartella della sessione.
-            var boundary = boundaries.For(move.Root);
-            if (boundary is null || !boundary.Validate(move.Target!, out var from).Succeeded || !boundary.Validate(move.Source, out var to).Succeeded)
+            // Ogni passo ricorda la sua cartella-recinto (i file aggiunti a mano possono stare altrove, sposta e copia
+            // hanno la destinazione come recinto); i diari scritti prima valgono per la cartella della sessione.
+            var boundary = boundaries.For(step.Root);
+            var targetBoundary = step.TargetRoot is null ? boundary : boundaries.For(step.TargetRoot);
+            if (step.Kind == "folder")
             {
-                errors.Add(RenamrError.From(RenamrErrorCode.PathOutsideRoot, move.Target));
+                // Una cartella creata da noi: si toglie solo se è rimasta vuota.
+                if (boundary is not null && boundary.Validate(step.Source, out var folder).Succeeded)
+                {
+                    TryRemoveEmptyFolder(folder);
+                }
+                continue;
+            }
+            if (boundary is null || targetBoundary is null
+                || !targetBoundary.Validate(step.Target!, out var from).Succeeded || !boundary.Validate(step.Source, out var to).Succeeded)
+            {
+                errors.Add(RenamrError.From(RenamrErrorCode.PathOutsideRoot, step.Target));
+                continue;
+            }
+            if (step.Kind == "copy")
+            {
+                // La copia si toglie solo se l'originale c'è ancora: così non si perde mai l'unico esemplare.
+                if (File.Exists(from) && File.Exists(to) && !io.TryDelete(from))
+                {
+                    errors.Add(RenamrError.From(RenamrErrorCode.AccessDenied, from));
+                }
                 continue;
             }
             var result = await io.MoveAsync(from, to, ct).ConfigureAwait(false);
@@ -85,6 +105,21 @@ public sealed class RenameExecutor(MediaFileProcessor processor, RenameJournal j
             }
         }
         return errors;
+    }
+
+    private static void TryRemoveEmptyFolder(string folder)
+    {
+        try
+        {
+            if (Directory.Exists(folder) && !Directory.EnumerateFileSystemEntries(folder).Any())
+            {
+                Directory.Delete(folder);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Resta una cartella vuota: non è un errore da mostrare.
+        }
     }
 }
 

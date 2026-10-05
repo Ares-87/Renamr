@@ -91,7 +91,9 @@ public sealed class SafeFileOperations(ILogger<SafeFileOperations>? logger = nul
     /// </summary>
     public async Task<OperationResult> MoveAsync(string source, string target, CancellationToken ct)
     {
-        if (!File.Exists(source))
+        // Anche le cartelle (modalità "Rinomina file" sulle cartelle): Directory.Move, sempre sullo stesso volume.
+        var isFolder = Directory.Exists(source);
+        if (!isFolder && !File.Exists(source))
         {
             return OperationResult.Fail(RenamrErrorCode.FileNotFound, source);
         }
@@ -115,7 +117,14 @@ public sealed class SafeFileOperations(ILogger<SafeFileOperations>? logger = nul
                     Directory.CreateDirectory(targetDir);
                 }
                 // overwrite:false => se nel frattempo è comparso un file con lo stesso nome, falliamo invece di distruggerlo.
-                File.Move(source, target, overwrite: false);
+                if (isFolder)
+                {
+                    Directory.Move(source, target);
+                }
+                else
+                {
+                    File.Move(source, target, overwrite: false);
+                }
                 _log.LogInformation("Rinominato {Source} -> {Target}", source, target);
                 return OperationResult.Ok();
             }
@@ -128,6 +137,81 @@ public sealed class SafeFileOperations(ILogger<SafeFileOperations>? logger = nul
             {
                 return OperationResult.Fail(IoErrorClassifier.Classify(ex, source));
             }
+        }
+    }
+
+    /// <summary>
+    /// Copia senza mai sovrascrivere; la copia tiene la data di modifica dell'originale. Se la copia si interrompe
+    /// (disco pieno, rete caduta) il file a metà viene tolto: era nostro, la destinazione prima era libera.
+    /// </summary>
+    public async Task<OperationResult> CopyAsync(string source, string target, CancellationToken ct)
+    {
+        if (!File.Exists(source))
+        {
+            return OperationResult.Fail(RenamrErrorCode.FileNotFound, source);
+        }
+        if (File.Exists(target) || Directory.Exists(target))
+        {
+            return OperationResult.Fail(RenamrErrorCode.TargetAlreadyExists, target);
+        }
+
+        var targetDir = Path.GetDirectoryName(target);
+        for (var attempt = 0; ; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            var created = false;
+            try
+            {
+                if (!string.IsNullOrEmpty(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
+                await using (var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                await using (var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1 << 16, FileOptions.Asynchronous))
+                {
+                    created = true;
+                    await input.CopyToAsync(output, ct).ConfigureAwait(false);
+                }
+                File.SetLastWriteTimeUtc(target, File.GetLastWriteTimeUtc(source));
+                _log.LogInformation("Copiato {Source} -> {Target}", source, target);
+                return OperationResult.Ok();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OperationCanceledException)
+            {
+                if (created)
+                {
+                    TryDelete(target);
+                }
+                if (ex is OperationCanceledException)
+                {
+                    throw;
+                }
+                if (ex is IOException io && !created && IoErrorClassifier.IsTransient(io) && attempt < TransientRetries)
+                {
+                    await Task.Delay(TransientDelay * (attempt + 1), ct).ConfigureAwait(false);
+                    continue;
+                }
+                return OperationResult.Fail(IoErrorClassifier.Classify(ex, source));
+            }
+        }
+    }
+
+    /// <summary>Toglie un file creato da noi (copia interrotta, o "Annulla" di una copia). Best effort.</summary>
+    public bool TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.SetAttributes(path, FileAttributes.Normal);
+                File.Delete(path);
+            }
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _log.LogWarning(ex, "Impossibile togliere {Path}", path);
+            return false;
         }
     }
 

@@ -590,10 +590,24 @@
                           IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}">
                 <StackPanel Spacing="12" Margin="0,0,12,12">
                     <TextBlock Text="{x:Bind loc:Strings.Current.BatchFiles}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{x:Bind loc:Strings.Current.BatchItemsLabel}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:BatchRenameViewModel.ItemOptions}"
+                                  SelectedIndex="{x:Bind ViewModel.Batch.ItemsIndex, Mode=TwoWay}" />
+                    </Grid>
+                    <TextBlock Text="{x:Bind loc:Strings.Current.ItemsFoldersNote}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="{x:Bind ViewModel.Batch.IsFolders, Mode=OneWay}" />
                     <TextBox Text="{x:Bind ViewModel.Batch.Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              PlaceholderText="{x:Bind loc:Strings.Current.BatchFilterPlaceholder}"
-                             ToolTipService.ToolTip="{x:Bind loc:Strings.Current.BatchFilterTip}" />
-                    <CheckBox Content="{x:Bind loc:Strings.Current.IncludeSubfolders}" IsChecked="{x:Bind ViewModel.Batch.IncludeSubfolders, Mode=TwoWay}" />
+                             ToolTipService.ToolTip="{x:Bind loc:Strings.Current.BatchFilterTip}"
+                             Visibility="{x:Bind ViewModel.Batch.IsFiles, Mode=OneWay}" />
+                    <CheckBox Content="{x:Bind loc:Strings.Current.IncludeSubfolders}" IsChecked="{x:Bind ViewModel.Batch.IncludeSubfolders, Mode=TwoWay}"
+                              Visibility="{x:Bind ViewModel.Batch.IsFiles, Mode=OneWay}" />
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -607,6 +621,35 @@
                                   ToolTipService.ToolTip="{x:Bind loc:Strings.Current.SortOrderTip}" />
                         <CheckBox Grid.Column="2" Content="{x:Bind loc:Strings.Current.SortDescending}" MinWidth="0" IsChecked="{x:Bind ViewModel.Batch.Descending, Mode=TwoWay}" />
                     </Grid>
+
+                    <!-- Rinomina dove sono, oppure sposta o copia in un'altra cartella (con sottocartelle da modello) -->
+                    <Grid ColumnSpacing="8" Visibility="{x:Bind ViewModel.Batch.IsFiles, Mode=OneWay}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{x:Bind loc:Strings.Current.BatchActionLabel}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:BatchRenameViewModel.ActionOptions}"
+                                  SelectedIndex="{x:Bind ViewModel.Batch.ActionIndex, Mode=TwoWay}" />
+                    </Grid>
+                    <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.Batch.IsRelocating, Mode=OneWay}">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Header="{x:Bind loc:Strings.Current.DestinationFolder}"
+                                     Text="{x:Bind ViewModel.Batch.DestinationFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="{x:Bind loc:Strings.Current.DestinationPlaceholder}" />
+                            <Button Grid.Column="1" VerticalAlignment="Bottom" Content="{x:Bind loc:Strings.Current.DestinationBrowse}"
+                                    Command="{x:Bind ViewModel.Batch.BrowseDestinationCommand}" />
+                        </Grid>
+                        <TextBox Header="{x:Bind loc:Strings.Current.SubfolderPattern}"
+                                 Text="{x:Bind ViewModel.Batch.SubfolderPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 PlaceholderText="{x:Bind loc:Strings.Current.SubfolderPlaceholder}" />
+                    </StackPanel>
+                    <CheckBox Content="{x:Bind loc:Strings.Current.NumberDuplicates}" IsChecked="{x:Bind ViewModel.Batch.NumberDuplicates, Mode=TwoWay}" />
 
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>

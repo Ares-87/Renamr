@@ -254,8 +254,14 @@ Read from the files (never written): `{taken}` date a photo was taken and `{came
 `{width}`, `{height}`), `{duration}`, and the music tags `{artist}`, `{album}`, `{title}`, `{track}`, `{year}`; a file
 without that data leaves the placeholder empty. The Italian names (`{nome}`, `{cartella}`, `{data}`, `{scatto}`…) work as well.
 
-This mode only renames: it never searches online and never changes metadata or dates. Rules, filter, order and the last
-mode used are remembered.
+Besides renaming in place, the files can be **moved** or **copied** to a destination folder (empty = the open folder),
+optionally into subfolders built from placeholders, such as `{taken:yyyy}/{taken:MM}` for photos or `{artist}/{album}`
+for music; missing data never creates empty levels. **If the name is taken, add (2), (3)…** numbers duplicates instead of
+reporting them. Switching **What** to *Folders* renames the folders inside the open one (in place, one level). Copies,
+moves and the folders Renamr created are all undone by **Undo** (a copy is removed only while its original is still there).
+
+This mode never searches online and never writes metadata or dates (a copy keeps the original's modified date). Rules,
+filter, order, action and the last mode used are remembered.
 
 ## What Renamr writes to your files
 

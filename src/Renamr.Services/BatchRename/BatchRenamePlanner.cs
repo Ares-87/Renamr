@@ -26,6 +26,24 @@ public sealed class BatchRenamePlanner
         };
 
         var files = new List<BatchFile>();
+        if (options.Items == BatchItems.Folders)
+        {
+            // Solo il primo livello: rinominare una cartella cambierebbe il percorso di quelle che contiene.
+            var folderEnumeration = new EnumerationOptions
+            {
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.Hidden | FileAttributes.System | FileAttributes.ReparsePoint,
+            };
+            foreach (var info in new DirectoryInfo(boundary.Root).EnumerateDirectories("*", folderEnumeration))
+            {
+                if (!info.Name.StartsWith('.') && !info.Name.Contains(".renamr-", StringComparison.OrdinalIgnoreCase) && boundary.IsStrictDescendant(info.FullName))
+                {
+                    files.Add(new BatchFile(info.FullName, 0, info.LastWriteTimeUtc, info.CreationTimeUtc) { IsFolder = true, Details = FileDetails.None });
+                }
+            }
+            return files;
+        }
+
         var details = BatchTokens.NeedsDetails(options.Rules);
         foreach (var info in new DirectoryInfo(boundary.Root).EnumerateFiles("*", enumeration))
         {
@@ -78,9 +96,12 @@ public sealed class BatchRenamePlanner
     public IReadOnlyList<RenamePlanEntry> Plan(string? rootFolder, IReadOnlyList<BatchFile> files, BatchRenameOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        var boundaries = new Dictionary<string, PathBoundary>(StringComparer.Ordinal);
+        var boundaries = new Dictionary<string, PathBoundary?>(StringComparer.Ordinal);
         var sorted = BatchRenameEngine.Sort(files, options.SortBy, options.Descending);
-        var results = BatchRenameEngine.Apply(sorted, options.Rules);
+        var action = options.EffectiveAction;
+        var relocating = action != BatchAction.Rename;
+        var results = BatchRenameEngine.Apply(sorted, options.Rules, relocating ? options.SubfolderPattern : null);
+        var destination = options.DestinationFolder?.Trim() ?? string.Empty;
 
         var entries = results.Select(r =>
         {
@@ -93,26 +114,103 @@ public sealed class BatchRenamePlanner
             {
                 return Fail(r.File.Path, RenamrError.From(RenamrErrorCode.PathOutsideRoot, r.File.Path));
             }
-            if (!boundaries.TryGetValue(root, out var boundary))
+
+            // Rinomina: stessa cartella, stesso recinto. Sposta e copia: la destinazione (vuota = la cartella aperta)
+            // è il recinto delle destinazioni, la sorgente resta controllata con la sua cartella.
+            var targetRoot = relocating && destination.Length > 0 ? destination : root;
+            if (Boundary(targetRoot) is not { } boundary)
             {
-                boundaries[root] = boundary = new PathBoundary(root);
+                return Fail(r.File.Path, new RenamrError(RenamrErrorCode.FileNotFound, Strings.Current.Format(nameof(Strings.DestinationNotFound), targetRoot))) with { Root = r.File.Root };
             }
-            var check = boundary.ResolveTarget(r.File.Folder, r.NewName, out var target);
+            var check = relocating
+                ? boundary.ResolveTarget(boundary.Root, Path.Combine(r.Subfolder, r.NewName), out var target)
+                : boundary.ResolveTarget(r.File.Folder, r.NewName, out target);
             if (!check.Succeeded)
             {
                 return Fail(r.File.Path, check.Error!) with { Root = r.File.Root };
             }
+            var same = string.Equals(r.File.Path, target, StringComparison.Ordinal);
             return new RenamePlanEntry
             {
                 SourcePath = r.File.Path,
                 TargetPath = target,
                 Root = r.File.Root,
+                TargetRoot = relocating && destination.Length > 0 ? boundary.Root : null,
+                Copy = action == BatchAction.Copy,
                 NameOnly = true,
-                Status = string.Equals(r.File.Path, target, StringComparison.Ordinal) ? PlanStatus.Unchanged : PlanStatus.Ready,
+                // Copiare un file su sé stesso non ha senso: resta "già corretto".
+                Status = same ? PlanStatus.Unchanged : PlanStatus.Ready,
             };
         }).ToList();
 
-        return DetectConflicts(entries);
+        if (options.NumberDuplicates)
+        {
+            NumberDuplicateTargets(entries, sourcesStay: action == BatchAction.Copy);
+        }
+        return DetectConflicts(entries, sourcesStay: action == BatchAction.Copy);
+
+        PathBoundary? Boundary(string folder)
+        {
+            if (!boundaries.TryGetValue(folder, out var boundary))
+            {
+                try
+                {
+                    boundary = new PathBoundary(folder);
+                }
+                catch (Exception ex) when (ex is ArgumentException or IOException)
+                {
+                    boundary = null;
+                }
+                boundaries[folder] = boundary;
+            }
+            return boundary;
+        }
+    }
+
+    /// <summary>
+    /// "Aggiungi (2)": un nome già preso (da un altro file dell'elenco o da un file che c'è già) diventa
+    /// "Nome (2).ext", "Nome (3).ext"… nell'ordine dell'elenco. Con la copia gli originali restano al loro posto.
+    /// </summary>
+    internal static void NumberDuplicateTargets(List<RenamePlanEntry> entries, bool sourcesStay)
+    {
+        var comparer = StringComparer.OrdinalIgnoreCase;
+        var moving = sourcesStay
+            ? new HashSet<string>(comparer)
+            : entries.Where(e => e.Status == PlanStatus.Ready).Select(e => e.SourcePath).ToHashSet(comparer);
+        var claimed = entries.Where(e => sourcesStay || e.Status != PlanStatus.Ready).Select(e => e.SourcePath).ToHashSet(comparer);
+
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var e = entries[i];
+            if (e.Status != PlanStatus.Ready)
+            {
+                continue;
+            }
+            var target = e.TargetPath!;
+            if (IsFree(target, e.SourcePath))
+            {
+                claimed.Add(target);
+                continue;
+            }
+            var folder = Path.GetDirectoryName(target)!;
+            var isFolder = Directory.Exists(e.SourcePath);
+            var stem = isFolder ? Path.GetFileName(target) : Path.GetFileNameWithoutExtension(target);
+            var extension = isFolder ? string.Empty : Path.GetExtension(target);
+            for (var n = 2; n < 10_000; n++)
+            {
+                var candidate = Path.Combine(folder, $"{stem} ({n}){extension}");
+                if (IsFree(candidate, e.SourcePath))
+                {
+                    claimed.Add(candidate);
+                    entries[i] = e with { TargetPath = candidate, Status = comparer.Equals(candidate, e.SourcePath) ? PlanStatus.Unchanged : PlanStatus.Ready };
+                    break;
+                }
+            }
+        }
+
+        bool IsFree(string path, string source) =>
+            !claimed.Contains(path)
+            && (comparer.Equals(path, source) || moving.Contains(path) || !(File.Exists(path) || Directory.Exists(path)));
     }
 
     /// <summary>
@@ -120,15 +218,18 @@ public sealed class BatchRenamePlanner
     /// Un file che verrà rinominato invece libera il suo: "1 ➔ 2, 2 ➔ 3" è lecito, l'esecuzione ne gestisce l'ordine.
     /// I confronti ignorano maiuscole e minuscole perché i dischi Windows non le distinguono.
     /// </summary>
-    internal static IReadOnlyList<RenamePlanEntry> DetectConflicts(List<RenamePlanEntry> entries)
+    internal static IReadOnlyList<RenamePlanEntry> DetectConflicts(List<RenamePlanEntry> entries, bool sourcesStay = false)
     {
         var comparer = StringComparer.OrdinalIgnoreCase;
         bool changed;
         do
         {
             changed = false;
-            var staying = entries.Where(e => e.Status != PlanStatus.Ready).Select(e => e.SourcePath).ToHashSet(comparer);
-            var moving = entries.Where(e => e.Status == PlanStatus.Ready).Select(e => e.SourcePath).ToHashSet(comparer);
+            // Con la copia ogni originale resta dov'è e occupa il suo nome.
+            var staying = entries.Where(e => sourcesStay || e.Status != PlanStatus.Ready).Select(e => e.SourcePath).ToHashSet(comparer);
+            var moving = sourcesStay
+                ? new HashSet<string>(comparer)
+                : entries.Where(e => e.Status == PlanStatus.Ready).Select(e => e.SourcePath).ToHashSet(comparer);
             var claimed = new HashSet<string>(staying, comparer);
 
             for (var i = 0; i < entries.Count; i++)

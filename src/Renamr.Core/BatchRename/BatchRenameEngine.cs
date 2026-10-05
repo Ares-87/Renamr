@@ -14,6 +14,28 @@ public enum BatchSortBy
     Extension,
 }
 
+/// <summary>Cosa fare con il nuovo nome.</summary>
+public enum BatchAction
+{
+    /// <summary>Rinomina il file dov'è.</summary>
+    Rename,
+
+    /// <summary>Lo sposta nella cartella di destinazione (e nelle sottocartelle del modello) con il nuovo nome.</summary>
+    Move,
+
+    /// <summary>Ne crea una copia nella cartella di destinazione; l'originale resta com'è.</summary>
+    Copy,
+}
+
+/// <summary>Cosa elencare: i file della cartella, oppure le sue cartelle.</summary>
+public enum BatchItems
+{
+    Files,
+
+    /// <summary>Le cartelle dentro quella aperta (solo il primo livello): si rinominano come i file, senza estensione.</summary>
+    Folders,
+}
+
 /// <summary>Tutto ciò che l'utente sceglie nella modalità "Rinomina file". Viene salvato e riproposto all'avvio.</summary>
 public sealed record BatchRenameOptions
 {
@@ -24,6 +46,23 @@ public sealed record BatchRenameOptions
 
     /// <summary>Quali file considerare: "*.jpg; *.png", "jpg png", "IMG_*". Vuoto = tutti.</summary>
     public string Filter { get; init; } = string.Empty;
+
+    public BatchItems Items { get; init; } = BatchItems.Files;
+
+    /// <summary>Le cartelle si possono solo rinominare: con <see cref="BatchItems.Folders"/> vale sempre <see cref="BatchAction.Rename"/>.</summary>
+    public BatchAction Action { get; init; } = BatchAction.Rename;
+
+    /// <summary>Per sposta e copia: cartella di destinazione (assoluta); vuota = la cartella aperta.</summary>
+    public string DestinationFolder { get; init; } = string.Empty;
+
+    /// <summary>Per sposta e copia: sottocartelle da creare nella destinazione, con segnaposto ("{scatto:yyyy}/{scatto:MM}").</summary>
+    public string SubfolderPattern { get; init; } = string.Empty;
+
+    /// <summary>Se il nome nuovo è già preso, aggiunge " (2)", " (3)"… invece di segnalare l'errore.</summary>
+    public bool NumberDuplicates { get; init; }
+
+    /// <summary>L'azione davvero applicata (le cartelle si possono solo rinominare).</summary>
+    public BatchAction EffectiveAction => Items == BatchItems.Folders ? BatchAction.Rename : Action;
 
     /// <summary>Le regole proposte la prima volta: nome pulito e numerato.</summary>
     public static BatchRenameOptions Default { get; } = new()
@@ -76,8 +115,11 @@ public static partial class BatchRenameEngine
         return files.Order(comparer).ToList();
     }
 
-    /// <summary>Applica le regole attive ai file, già ordinati con <see cref="Sort"/>.</summary>
-    public static IReadOnlyList<BatchRenameResult> Apply(IReadOnlyList<BatchFile> sortedFiles, IReadOnlyList<BatchRule> rules)
+    /// <summary>
+    /// Applica le regole attive ai file, già ordinati con <see cref="Sort"/>. Con <paramref name="subfolderPattern"/>
+    /// calcola anche la sottocartella di destinazione di ogni file (stessi segnaposto delle regole).
+    /// </summary>
+    public static IReadOnlyList<BatchRenameResult> Apply(IReadOnlyList<BatchFile> sortedFiles, IReadOnlyList<BatchRule> rules, string? subfolderPattern = null)
     {
         ArgumentNullException.ThrowIfNull(sortedFiles);
         ArgumentNullException.ThrowIfNull(rules);
@@ -113,9 +155,49 @@ public static partial class BatchRenameEngine
             // Spazi all'inizio e alla fine non sono mai voluti (restano da "Aggiungi testo" o dalla numerazione).
             stem = stem.Trim();
             var name = stem + extension;
-            results.Add(new BatchRenameResult(file, name, error ?? ValidateName(stem, name)));
+            error ??= ValidateName(stem, name);
+            var subfolder = string.Empty;
+            if (error is null && !string.IsNullOrWhiteSpace(subfolderPattern))
+            {
+                try
+                {
+                    (subfolder, error) = Subfolder(BatchTokens.Expand(subfolderPattern, stem, context));
+                }
+                catch (BatchRuleException ex)
+                {
+                    error = ex.Message;
+                }
+            }
+            results.Add(new BatchRenameResult(file, name, error) { Subfolder = subfolder });
         }
         return results;
+    }
+
+    /// <summary>
+    /// Sottocartella relativa dal modello già espanso: "/" e "\" separano i livelli, i livelli vuoti si saltano
+    /// (un dato mancante non crea "Foto//x"), ogni livello deve essere un nome valido e ".." non è ammesso.
+    /// </summary>
+    private static (string Path, string? Error) Subfolder(string expanded)
+    {
+        var parts = new List<string>();
+        foreach (var raw in expanded.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var part = raw.Trim();
+            if (part.Length == 0)
+            {
+                continue;
+            }
+            if (part is "." or "..")
+            {
+                return (string.Empty, Strings.Current.Format(nameof(Strings.SubfolderInvalid), part));
+            }
+            if (ValidateName(part, part) is { } error)
+            {
+                return (string.Empty, error);
+            }
+            parts.Add(part);
+        }
+        return (string.Join(System.IO.Path.DirectorySeparatorChar, parts), null);
     }
 
     /// <summary>Null se <paramref name="name"/> è un nome di file valido su Windows e Linux; altrimenti il motivo, nella lingua dell'interfaccia.</summary>
