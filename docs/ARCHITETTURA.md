@@ -209,8 +209,14 @@ In alto nella finestra un selettore sceglie tra **Film e serie** (tutto quanto d
 
 ## 15. README e release
 
-- Il `README.md` è in inglese (scelta di Daniele) con gli screenshot in `docs/screenshots`, presi dall'app Linux con
-  l'interfaccia in inglese su una libreria dimostrativa. Questo documento resta in italiano.
+- Il `README.md` è in inglese (scelta di Daniele) con tre screenshot Windows e tre Linux in `docs/screenshots`
+  (`windows-*.png`, `linux-*.png`: inizio, anteprima film, Rinomina file), interfaccia in inglese su una libreria
+  dimostrativa con soli titolo e anno. Questo documento resta in italiano.
+- Gli screenshot Windows li rifà `.github/workflows/screenshots.yml` su un runner Windows (a mano, o a ogni push su un
+  branch che tocca `build/screenshots`) e li committa sul branch. I database online sono sostituiti da
+  `build/screenshots/mock.py`, un proxy HTTPS con risposte fisse; `build/screenshots/windows.ps1` crea i file di
+  esempio e apre l'app con la cartella come argomento (`Renamr.exe D:\Film`). Gli screenshot Linux si fanno allo
+  stesso modo con lo stesso proxy, sotto Xvfb.
 - `.github/workflows/release.yml` compila e testa su runner Windows e Linux a ogni pull request e push su `main`
   (è anche la prima compilazione automatica di `Renamr.App`). Un tag `vX.Y.Z` uguale a `<Version>` in
   `Directory.Build.props` pubblica una release con `Renamr-X.Y.Z-win-x64.zip`, `-win-arm64.zip`, `-linux-x64.tar.gz` e

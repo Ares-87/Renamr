@@ -1,0 +1,68 @@
+name: Windows screenshots
+
+# Retakes the Windows screenshots of the README (docs/screenshots/windows-*.png) on a Windows runner and commits them
+# to the branch. The online databases are replaced by build/screenshots/mock.py, so the preview shows the same matches
+# every time. Runs by hand, or on a branch push that changes build/screenshots.
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths:
+      - build/screenshots/**
+      - .github/workflows/screenshots.yml
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Publish Renamr.App
+        shell: pwsh
+        run: |
+          dotnet publish src/Renamr.App -c Release -r win-x64 -p:Platform=x64 --self-contained -o out/Renamr
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Take the screenshots
+        shell: pwsh
+        run: |
+          # The fake databases run in this same step: the runner stops what a step started when the step ends.
+          python -m pip install --quiet cryptography
+          $env:MOCK_DIR = "$PWD\mock"
+          New-Item -ItemType Directory mock | Out-Null
+          Start-Process python -ArgumentList 'build/screenshots/mock.py' -RedirectStandardOutput mock/out.log -RedirectStandardError mock/err.log
+          $deadline = (Get-Date).AddSeconds(60)
+          while (-not (Test-Path mock/ca.pem) -and (Get-Date) -lt $deadline) { Start-Sleep 1 }
+          Start-Sleep 2
+          certutil -addstore Root mock/ca.pem | Out-Null
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:HTTPS_PROXY = 'http://127.0.0.1:8899'
+          $env:HTTP_PROXY = 'http://127.0.0.1:8899'
+          ./build/screenshots/windows.ps1 -AppDir out/Renamr -OutDir docs/screenshots
+      - name: Fake database log
+        if: always()
+        shell: pwsh
+        run: Get-Content mock/err.log -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-screenshots
+          path: docs/screenshots/windows-*.png
+      - name: Commit the screenshots
+        if: github.ref_name != 'main'
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/screenshots/windows-*.png
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { Write-Host 'Screenshots unchanged'; exit 0 }
+          git commit -m 'Retake the Windows screenshots'
+          git push origin HEAD:${{ github.ref_name }}

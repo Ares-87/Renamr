@@ -1,0 +1,11 @@
+{
+  "Matching": {
+    "HighConfidenceThreshold": 0.8,
+    "MinimumConfidence": 0.45,
+    "Language": "en-US",
+    "MaxParallelLookups": 4
+  },
+  "Output": {
+    "WriteEmbeddedMetadata": true
+  }
+}

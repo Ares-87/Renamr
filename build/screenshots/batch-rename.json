@@ -1,0 +1,1 @@
+{"BatchModeActive": true, "Options": {"Rules": [{"regola": "nuovoNome", "Pattern": "{folder} - {date:yyyy-MM-dd} - {n:000}", "Label": "Nuovo nome", "Enabled": true}, {"regola": "estensione", "Mode": "Lower", "NewExtension": "", "Label": "Estensione", "Enabled": true}], "SortBy": "Name", "Descending": false, "IncludeSubfolders": false, "Filter": ""}}

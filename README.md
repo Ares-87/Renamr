@@ -84,30 +84,28 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 
 ## Screenshots
 
+Three screens on each system, with the same movies and photos: on Windows with the dark theme, on Linux with the light
+one.
+
 ### Windows
 
 | | |
 |---|---|
 | ![Windows: start screen with the two colored mode tabs](docs/screenshots/windows-start.png) | ![Windows: Rename files mode with a pattern rule](docs/screenshots/windows-rename-files.png) |
-| **Start screen.** The colored tabs at the top switch between *Movies, Series and Music* and *Rename files*; the coffee cup next to the gear opens the donation message. | **Rename files.** Rules on the left, live preview on the right. |
+| **Start screen.** The colored tabs at the top switch between *Movies, Series and Music* and *Rename files*; drop a folder or pick a folder or single files. | **Rename files.** Rules on the left, live preview on the right. |
 
 The movies preview at the top of this page is also from Windows: matches below the confidence threshold are marked
-*Low confidence* and only renamed if you tick **Include low confidence**.
+*Low confidence*, **Choose…** opens every candidate and a free search, and they are only renamed if you pick one or
+tick **Include low confidence**.
 
 ### Linux
 
-The same movies and photos as the Windows screenshots, with the interface in English and the light theme.
-
 | | |
 |---|---|
-| ![Movies preview](docs/screenshots/media-preview.png) | ![Right-click menu with name format presets](docs/screenshots/name-format-menu.png) |
-| **Movies preview.** Each file with the title, release date and confidence found online. | **Right-click menu.** Switch the name format or the title language for the whole list in one click. |
-| ![Start screen](docs/screenshots/start.png) | |
-| **Start screen.** Drop a folder or pick one; choose the title language. | |
-| ![Renaming completed with an Undo button](docs/screenshots/renamed-undo.png) | ![Rename files mode with a pattern and an extension rule](docs/screenshots/rename-files.png) |
-| **After renaming.** Every row shows its result, and **Undo rename** restores the original names. | **Rename files.** The photos become `Milano - 2023-06-29 - 001.jpg` with a pattern rule and a lowercase extension rule. |
-| ![Settings: name formats](docs/screenshots/settings-formats.png) | ![Settings: metadata to write](docs/screenshots/settings-metadata.png) |
-| **Settings: name formats** with a live example under each one, and the API keys. | **Settings: metadata to write.** Pick exactly which fields end up in your files. |
+| ![Linux: movies preview](docs/screenshots/linux-media-preview.png) | ![Linux: Rename files mode with a pattern and an extension rule](docs/screenshots/linux-rename-files.png) |
+| **Movies preview.** Each file with the title, release date and confidence found online; the × takes a file off the list. | **Rename files.** The photos become `Milano - 2023-06-29 - 001.jpg` with a pattern rule and a lowercase extension rule. |
+| ![Linux: start screen](docs/screenshots/linux-start.png) | |
+| **Start screen.** Drop a folder, or choose a folder or single files, and the title language. | |
 
 ## Download and install
 

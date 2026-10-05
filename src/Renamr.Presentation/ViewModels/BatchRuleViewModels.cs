@@ -138,6 +138,15 @@ public sealed partial class NumberingRuleViewModel : BatchRuleViewModel
     [ObservableProperty]
     public partial int PositionIndex { get; set; } = (int)NumberPosition.End;
 
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnPositionIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            PositionIndex = oldValue;
+        }
+    }
+
     [ObservableProperty]
     public partial double Start { get; set; } = 1;
 
@@ -217,6 +226,15 @@ public sealed partial class InsertTextRuleViewModel : BatchRuleViewModel
     [NotifyPropertyChangedFor(nameof(IsAtIndex))]
     public partial int PositionIndex { get; set; }
 
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnPositionIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            PositionIndex = oldValue;
+        }
+    }
+
     [ObservableProperty]
     public partial double Index { get; set; }
 
@@ -242,6 +260,15 @@ public sealed partial class RemoveCharactersRuleViewModel : BatchRuleViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRange))]
     public partial int ModeIndex { get; set; }
+
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnModeIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            ModeIndex = oldValue;
+        }
+    }
 
     [ObservableProperty]
     public partial double Count { get; set; } = 1;
@@ -270,6 +297,15 @@ public sealed partial class ChangeCaseRuleViewModel : BatchRuleViewModel
 
     [ObservableProperty]
     public partial int ModeIndex { get; set; } = (int)CaseMode.TitleCase;
+
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnModeIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            ModeIndex = oldValue;
+        }
+    }
 
     public override string Title => Strings.Current.RuleCase;
 
@@ -347,6 +383,15 @@ public sealed partial class ExtensionRuleViewModel : BatchRuleViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReplace))]
     public partial int ModeIndex { get; set; }
+
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnModeIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            ModeIndex = oldValue;
+        }
+    }
 
     [ObservableProperty]
     public partial string NewExtension { get; set; } = string.Empty;
