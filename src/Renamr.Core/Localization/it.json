@@ -176,6 +176,7 @@
   "ProviderKeyRejected": "{0} ha rifiutato la chiave API: i suoi risultati sono stati sostituiti da altre fonti.",
   "ProviderFailed": "{0}: {1}, i suoi risultati sono stati sostituiti da altre fonti.",
   "ProviderNotConfigured": "{0}: non configurato",
+  "DecodedTitleSearch": "Titolo decodificato: «{0}»",
 
   "Save": "Salva",
   "SettingsNameFormats": "Formato dei nomi",

@@ -169,6 +169,7 @@ public sealed partial class Strings
     public string ProviderKeyRejected => Get();
     public string ProviderFailed => Get();
     public string ProviderNotConfigured => Get();
+    public string DecodedTitleSearch => Get();
     public string Save => Get();
     public string SettingsNameFormats => Get();
     public string SettingsPlaceholders => Get();

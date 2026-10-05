@@ -26,7 +26,8 @@ public sealed partial class MatchPickerViewModel : ObservableObject
         FileName = entry.SourceName;
 
         var parsed = entry.Parsed;
-        Query = parsed?.Title ?? Path.GetFileNameWithoutExtension(entry.SourcePath);
+        // Un titolo offuscato ("B0N3 L4K3") si propone già decodificato ("Bone Lake").
+        Query = parsed is null ? Path.GetFileNameWithoutExtension(entry.SourcePath) : Core.Parsing.LeetSpeak.Decode(parsed.Title);
         Year = parsed?.Year?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         Season = parsed?.Season?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         Episode = (parsed?.FirstEpisode)?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;

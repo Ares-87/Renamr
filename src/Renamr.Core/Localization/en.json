@@ -176,6 +176,7 @@
   "ProviderKeyRejected": "{0} rejected the API key: its results were replaced by other sources.",
   "ProviderFailed": "{0}: {1}, its results were replaced by other sources.",
   "ProviderNotConfigured": "{0}: not configured",
+  "DecodedTitleSearch": "Decoded title: \"{0}\"",
 
   "Save": "Save",
   "SettingsNameFormats": "Name format",
