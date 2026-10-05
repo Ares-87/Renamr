@@ -32,6 +32,26 @@ public sealed class FolderPickerService(WindowContext context) : IFolderPickerSe
         var folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
     }
+
+    public async Task<IReadOnlyList<string>> PickFilesAsync(IReadOnlyCollection<string>? extensions)
+    {
+        var picker = new FileOpenPicker
+        {
+            SuggestedStartLocation = PickerLocationId.VideosLibrary,
+            ViewMode = PickerViewMode.List,
+        };
+        // Film e serie: solo i tipi che Renamr riconosce; "Rinomina file": qualunque file.
+        foreach (var extension in (extensions ?? ["*"]).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            picker.FileTypeFilter.Add(extension);
+        }
+
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(context.Window ?? throw new InvalidOperationException("Finestra non pronta"));
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+        var files = await picker.PickMultipleFilesAsync();
+        return files is null ? [] : [.. files.Select(f => f.Path).Where(p => !string.IsNullOrEmpty(p))];
+    }
 }
 
 public sealed class ShellService : IShellService

@@ -12,21 +12,22 @@ namespace Renamr.Services.Pipeline;
 public sealed class RenameExecutor(MediaFileProcessor processor, RenameJournal journal, SafeFileOperations io)
 {
     public async Task<IReadOnlyList<RenamePlanEntry>> ExecuteAsync(
-        string rootFolder,
+        string? rootFolder,
         IReadOnlyList<RenamePlanEntry> plan,
         RenameRunOptions options,
         IProgress<RenameProgress>? progress,
         CancellationToken ct)
     {
-        var boundary = new PathBoundary(rootFolder);
         var results = plan.ToArray();
+        // "Già corretto" resta fuori: nessun passaggio sul file e nessun posto nel conteggio dell'avanzamento.
         var todo = Enumerable.Range(0, results.Length)
-            .Where(i => results[i].IsActionable && (results[i].Status != PlanStatus.LowConfidence || options.IncludeLowConfidence))
+            .Where(i => results[i].NeedsWork(options.IncludeLowConfidence))
             .ToList();
+        var boundaries = new BoundaryCache(rootFolder);
 
-        if (!options.DryRun)
+        if (!options.DryRun && todo.Count > 0)
         {
-            journal.BeginSession(boundary.Root);
+            journal.BeginSession(rootFolder ?? results[todo[0]].Root ?? string.Empty);
         }
 
         var phase = options.DryRun ? Strings.Current.PhaseDryRun : Strings.Current.PhaseRename;
@@ -44,7 +45,9 @@ public sealed class RenameExecutor(MediaFileProcessor processor, RenameJournal j
 
             try
             {
-                results[i] = await processor.ProcessAsync(boundary, results[i], options, ct).ConfigureAwait(false);
+                results[i] = boundaries.For(results[i]) is { } boundary
+                    ? await processor.ProcessAsync(boundary, results[i], options, ct).ConfigureAwait(false)
+                    : results[i] with { Status = PlanStatus.Error, Error = RenamrError.From(RenamrErrorCode.PathOutsideRoot, results[i].SourcePath) };
             }
             catch (OperationCanceledException)
             {
@@ -62,12 +65,15 @@ public sealed class RenameExecutor(MediaFileProcessor processor, RenameJournal j
         var entries = RenameJournal.Read(journalFile);
         var session = entries.FirstOrDefault(e => e.Kind == "session")
                       ?? throw new InvalidDataException("Journal senza intestazione di sessione");
-        var boundary = new PathBoundary(session.Source);
+        var boundaries = new BoundaryCache(session.Source.Length > 0 ? session.Source : null);
         var errors = new List<RenamrError>();
 
         foreach (var move in entries.Where(e => e.Kind == "move").Reverse())
         {
-            if (!boundary.Validate(move.Target!, out var from).Succeeded || !boundary.Validate(move.Source, out var to).Succeeded)
+            // Ogni spostamento ricorda la sua cartella-recinto (i file aggiunti a mano possono stare altrove);
+            // i diari scritti prima valgono per la cartella della sessione.
+            var boundary = boundaries.For(move.Root);
+            if (boundary is null || !boundary.Validate(move.Target!, out var from).Succeeded || !boundary.Validate(move.Source, out var to).Succeeded)
             {
                 errors.Add(RenamrError.From(RenamrErrorCode.PathOutsideRoot, move.Target));
                 continue;
@@ -79,5 +85,35 @@ public sealed class RenameExecutor(MediaFileProcessor processor, RenameJournal j
             }
         }
         return errors;
+    }
+}
+
+/// <summary>Un recinto per cartella, creato una volta sola; null se la cartella non esiste più.</summary>
+internal sealed class BoundaryCache(string? defaultRoot)
+{
+    private readonly Dictionary<string, PathBoundary?> _cache = new(StringComparer.Ordinal);
+
+    public PathBoundary? For(RenamePlanEntry entry) => For(entry.Root);
+
+    public PathBoundary? For(string? root)
+    {
+        root ??= defaultRoot;
+        if (string.IsNullOrEmpty(root))
+        {
+            return null;
+        }
+        if (!_cache.TryGetValue(root, out var boundary))
+        {
+            try
+            {
+                boundary = new PathBoundary(root);
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException)
+            {
+                boundary = null;
+            }
+            _cache[root] = boundary;
+        }
+        return boundary;
     }
 }

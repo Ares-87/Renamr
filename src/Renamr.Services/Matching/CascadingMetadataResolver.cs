@@ -71,9 +71,11 @@ public sealed class CascadingMetadataResolver(
 
         if (best is null || best.Confidence < matching.MinimumConfidence)
         {
+            // Nessun risultato abbastanza sicuro, ma quelli approssimativi restano: l'utente può sceglierli dalla riga.
             return new MatchResult
             {
                 Outcome = anySucceeded ? MatchOutcome.NoMatch : MatchOutcome.ProviderFailure,
+                Alternatives = Distinct(alternatives).Take(MaxCandidates).ToList(),
                 Trace = trace,
             };
         }
@@ -82,10 +84,56 @@ public sealed class CascadingMetadataResolver(
         {
             Outcome = best.Confidence >= matching.HighConfidenceThreshold ? MatchOutcome.Matched : MatchOutcome.LowConfidence,
             Best = best,
-            Alternatives = [.. alternatives.Where(a => !ReferenceEquals(a, best)).OrderByDescending(a => a.Confidence).Take(5)],
+            Alternatives = [.. Distinct(alternatives.Where(a => !ReferenceEquals(a, best))).Take(MaxCandidates)],
             Trace = trace,
         };
     }
+
+    /// <summary>Quanti risultati al massimo si mostrano nella scelta manuale.</summary>
+    public const int MaxCandidates = 15;
+
+    /// <summary>Ricerca dell'utente: tutti i database adatti, senza fermarsi al primo risultato sicuro.</summary>
+    public async Task<MatchResult> SearchAllAsync(MediaQuery query, CancellationToken cancellationToken)
+    {
+        var trace = new List<string>();
+        var found = new List<MatchCandidate>();
+        var anySucceeded = false;
+        foreach (var provider in ProvidersFor(query.Kind))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!provider.IsConfigured)
+            {
+                continue;
+            }
+            try
+            {
+                var results = await provider.SearchAsync(query, cancellationToken).ConfigureAwait(false);
+                anySucceeded = true;
+                found.AddRange(results);
+            }
+            catch (ProviderException ex)
+            {
+                _log.LogWarning("{Provider} non disponibile per '{Title}': {Message}", provider.Name, query.Title, ex.Message);
+                trace.Add($"{provider.Name}: {Core.Errors.ErrorMessages.Describe(ex.Code)}");
+                health?.Report(provider.Name, ex.Code, ex.Message);
+            }
+        }
+
+        var all = Distinct(found).Take(MaxCandidates).ToList();
+        return new MatchResult
+        {
+            Outcome = all.Count > 0 ? MatchOutcome.Matched : anySucceeded ? MatchOutcome.NoMatch : MatchOutcome.ProviderFailure,
+            Best = all.FirstOrDefault(),
+            Alternatives = all,
+            Trace = trace,
+        };
+    }
+
+    /// <summary>Dal più probabile; lo stesso titolo dello stesso database compare una volta sola.</summary>
+    private static IEnumerable<MatchCandidate> Distinct(IEnumerable<MatchCandidate> candidates) =>
+        candidates
+            .OrderByDescending(c => c.Confidence)
+            .DistinctBy(c => (c.Metadata.Provider, c.Metadata.ProviderId, c.Metadata.Season, c.Metadata.Episode));
 
     private IEnumerable<IMetadataProvider> ProvidersFor(MediaKind kind)
     {

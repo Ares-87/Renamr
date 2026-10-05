@@ -5,6 +5,9 @@ public sealed record BatchFile(string Path, long Size, DateTime ModifiedUtc, Dat
 {
     public string Name => System.IO.Path.GetFileName(Path);
 
+    /// <summary>Cartella-recinto del file: vuota = la cartella aperta (vedi RenamePlanEntry.Root).</summary>
+    public string? Root { get; init; }
+
     /// <summary>Nome senza estensione ("Foto 01" di "Foto 01.JPG").</summary>
     public string Stem => System.IO.Path.GetFileNameWithoutExtension(Path);
 

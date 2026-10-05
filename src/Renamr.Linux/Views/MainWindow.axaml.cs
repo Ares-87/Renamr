@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -6,6 +7,7 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using FluentAvalonia.UI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Renamr.Core.Localization;
@@ -36,6 +38,7 @@ public sealed partial class MainWindow : Window
         RootGrid.AddHandler(DragDrop.DragLeaveEvent, (_, _) => SetDropHighlight(false));
         RootGrid.AddHandler(DragDrop.DropEvent, Root_Drop);
         FileList.ContextRequested += List_ContextRequested;
+        FileList.Tapped += FileList_Tapped;
         IssueList.Tapped += Issue_Tapped;
         viewModel.PropertyChanged += ViewModel_PropertyChanged;
         UpdateDateHint();
@@ -69,7 +72,7 @@ public sealed partial class MainWindow : Window
 
     public MainViewModel ViewModel { get; }
 
-    // ---- Drag & drop: si accetta una cartella, ovunque nella finestra ----------------------------------------
+    // ---- Drag & drop: una cartella oppure dei file, ovunque nella finestra ------------------------------------
 
     private void Root_DragOver(object? sender, DragEventArgs e)
     {
@@ -90,13 +93,16 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        // Cartella trascinata, oppure la cartella che contiene il primo file trascinato.
-        var path = items.OfType<IStorageFolder>().FirstOrDefault()?.TryGetLocalPath()
-                   ?? Path.GetDirectoryName(items.OfType<IStorageFile>().FirstOrDefault()?.TryGetLocalPath() ?? string.Empty);
-
-        if (!string.IsNullOrEmpty(path))
+        // Una cartella apre quella cartella; dei file si aggiungono all'elenco (o ne fanno uno nuovo dalla schermata iniziale).
+        var folder = items.OfType<IStorageFolder>().Select(f => f.TryGetLocalPath()).FirstOrDefault(p => !string.IsNullOrEmpty(p));
+        var files = items.OfType<IStorageFile>().Select(f => f.TryGetLocalPath()).OfType<string>().ToList();
+        if (folder is not null)
         {
-            await ViewModel.OpenFolderCommand.ExecuteAsync(path);
+            await ViewModel.OpenFolderCommand.ExecuteAsync(folder);
+        }
+        if (files.Count > 0)
+        {
+            await ViewModel.AddFilesCommand.ExecuteAsync(files);
         }
     }
 
@@ -110,7 +116,7 @@ public sealed partial class MainWindow : Window
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.RootFolder) or nameof(MainViewModel.IsBatchMode) or nameof(MainViewModel.SetsCreationDate))
+        if (e.PropertyName is nameof(MainViewModel.PrimaryFolder) or nameof(MainViewModel.IsBatchMode) or nameof(MainViewModel.SetsCreationDate))
         {
             UpdateDateHint();
         }
@@ -120,11 +126,20 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private (string? Folder, bool Batch, bool Creation)? _dateHintKey;
+
     private void UpdateDateHint()
     {
         // In modalità "Rinomina file" le date non si toccano, e se la data di creazione è spenta nelle Impostazioni
         // nemmeno: l'avviso non serve.
-        var root = ViewModel.RootFolder;
+        var root = ViewModel.PrimaryFolder;
+        // Aggiungere o togliere file non cambia il disco: l'avviso chiuso dall'utente resta chiuso.
+        var key = (root, ViewModel.IsBatchMode, ViewModel.SetsCreationDate);
+        if (key == _dateHintKey)
+        {
+            return;
+        }
+        _dateHintKey = key;
         if (root is null || ViewModel.IsBatchMode || !ViewModel.SetsCreationDate || FileCreationTime.CanSet(root))
         {
             DateHintBar.IsOpen = false;
@@ -239,6 +254,54 @@ public sealed partial class MainWindow : Window
         await ViewModel.SettingsSavedCommand.ExecuteAsync(previousLanguage);
     }
 
+    // ---- Righe: scelta del risultato e "togli dall'elenco" --------------------------------------------------------
+
+    private async void FileList_Tapped(object? sender, TappedEventArgs e)
+    {
+        // Un clic sui pulsanti della riga ("Scegli…", la X) non apre la scelta una seconda volta.
+        if (e.Source is Visual source && source.FindAncestorOfType<Button>(includeSelf: true) is not null)
+        {
+            return;
+        }
+        if ((e.Source as Control)?.DataContext is FileItemViewModel item)
+        {
+            await ChooseMatchAsync(item);
+        }
+    }
+
+    private async void ChooseMatch_Click(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is FileItemViewModel item)
+        {
+            await ChooseMatchAsync(item);
+        }
+    }
+
+    private async void RemoveRow_Click(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is FileItemViewModel item)
+        {
+            await ViewModel.RemoveItemCommand.ExecuteAsync(item);
+        }
+    }
+
+    /// <summary>Risultati già trovati e ricerca libera; "Usa questo" applica la scelta alla riga.</summary>
+    private async Task ChooseMatchAsync(FileItemViewModel item)
+    {
+        if (!ViewModel.CanChooseMatch(item))
+        {
+            return;
+        }
+        var picker = ViewModel.CreateMatchPicker(item);
+        var dialog = new MatchPickerDialog(picker);
+        var result = await dialog.ShowAsync(this);
+        picker.SearchCancelCommand.Execute(null);
+        if (result == FAContentDialogResult.Primary && picker.SelectedChoice is { } choice)
+        {
+            ViewModel.ApplyMatch(item, choice.Candidate);
+        }
+    }
+
     // ---- Menu contestuale della lista: formato del nome e lingua al volo -------------------------------------
 
     private void List_ContextRequested(object? sender, ContextRequestedEventArgs args)
@@ -302,6 +365,12 @@ public sealed partial class MainWindow : Window
     {
         if (item is not null)
         {
+            if (ViewModel.CanChooseMatch(item))
+            {
+                var choose = new FAMenuFlyoutItem { Text = Strings.Current.ChooseMatch, IconSource = new FASymbolIconSource { Symbol = FASymbol.Find } };
+                choose.Click += async (_, _) => await ChooseMatchAsync(item);
+                menu.Items.Add(choose);
+            }
             if (item.Entry.TargetPath is { } targetPath)
             {
                 var copy = new FAMenuFlyoutItem { Text = Strings.Current.MenuCopyNewName, IconSource = new FASymbolIconSource { Symbol = FASymbol.Copy } };
@@ -317,6 +386,9 @@ public sealed partial class MainWindow : Window
             var reveal = new FAMenuFlyoutItem { Text = Strings.Current.MenuRevealFolder, IconSource = new FASymbolIconSource { Symbol = FASymbol.OpenFolder } };
             reveal.Click += (_, _) => App.Services.GetRequiredService<IShellService>().RevealInExplorer(item.Entry.SourcePath);
             menu.Items.Add(reveal);
+            var remove = new FAMenuFlyoutItem { Text = Strings.Current.RemoveFromList, IconSource = new FASymbolIconSource { Symbol = FASymbol.Dismiss } };
+            remove.Click += async (_, _) => await ViewModel.RemoveItemCommand.ExecuteAsync(item);
+            menu.Items.Add(remove);
         }
     }
 

@@ -24,10 +24,22 @@ public sealed class RenamePlanner(
 {
     private readonly ILogger _log = logger ?? NullLogger<RenamePlanner>.Instance;
 
-    public async Task<IReadOnlyList<RenamePlanEntry>> PlanAsync(string rootFolder, IProgress<RenameProgress>? progress, CancellationToken ct)
+    public Task<IReadOnlyList<RenamePlanEntry>> PlanAsync(string rootFolder, IProgress<RenameProgress>? progress, CancellationToken ct)
     {
         var boundary = new PathBoundary(rootFolder);
-        var files = scanner.Scan(boundary);
+        return PlanFilesAsync([.. scanner.Scan(boundary).Select(f => new PlanSource(f, rootFolder))], progress, ct);
+    }
+
+    /// <summary>
+    /// Analizza un elenco di file, ognuno con la sua cartella-recinto: quelli della cartella aperta e quelli aggiunti a mano.
+    /// </summary>
+    public async Task<IReadOnlyList<RenamePlanEntry>> PlanFilesAsync(IReadOnlyList<PlanSource> files, IProgress<RenameProgress>? progress, CancellationToken ct)
+    {
+        var boundaries = new Dictionary<string, PathBoundary>(StringComparer.Ordinal);
+        foreach (var root in files.Select(f => f.Root).Distinct(StringComparer.Ordinal))
+        {
+            boundaries[root] = new PathBoundary(root);
+        }
         var entries = new RenamePlanEntry[files.Count];
         var done = 0;
         progress?.Report(new RenameProgress(0, files.Count, null, Strings.Current.PhaseAnalysis));
@@ -40,7 +52,11 @@ public sealed class RenamePlanner(
             new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, settings.Current.Matching.MaxParallelLookups) },
             async (i, _) =>
             {
-                entries[i] = await PlanOneAsync(boundary, files[i], ct).ConfigureAwait(false);
+                var boundary = boundaries[files[i].Root];
+                // Un file aggiunto a mano che non sta dentro il suo recinto (link, percorso strano) non si analizza nemmeno.
+                entries[i] = boundary.IsStrictDescendant(files[i].Path)
+                    ? await PlanOneAsync(boundary, files[i].Path, ct).ConfigureAwait(false) with { Root = files[i].Root }
+                    : Fail(files[i].Path, null, RenamrErrorCode.PathOutsideRoot, files[i].Path) with { Root = files[i].Root };
                 progress?.Report(new RenameProgress(Interlocked.Increment(ref done), files.Count, entries[i], Strings.Current.PhaseAnalysis));
             }).ConfigureAwait(false);
 
@@ -70,12 +86,13 @@ public sealed class RenamePlanner(
             if (match.Best is null)
             {
                 var code = match.Outcome == MatchOutcome.ProviderFailure ? RenamrErrorCode.ProviderUnavailable : RenamrErrorCode.NoDatabaseMatch;
-                return Fail(path, parsed, code, string.Join(" · ", match.Trace));
+                return Fail(path, parsed, code, string.Join(" · ", match.Trace)) with { Candidates = match.Alternatives };
             }
 
             var low = match.Outcome == MatchOutcome.LowConfidence;
-            return BuildEntry(boundary, path, parsed, match.Best.Metadata, match.Best.Confidence,
+            var entry = BuildEntry(boundary, path, parsed, match.Best.Metadata, match.Best.Confidence,
                 low ? RenamrError.From(RenamrErrorCode.LowConfidenceMatch, string.Join(" · ", match.Trace)) : null);
+            return entry with { Candidates = [match.Best, .. match.Alternatives] };
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -90,11 +107,11 @@ public sealed class RenamePlanner(
 
     /// <summary>
     /// Ricalcola i nomi proposti con i template correnti, senza rifare le ricerche online:
-    /// serve quando l'utente cambia formato al volo dal menu contestuale.
+    /// serve quando l'utente cambia formato al volo dal menu contestuale, sceglie un risultato o toglie un file.
     /// </summary>
-    public IReadOnlyList<RenamePlanEntry> Rerender(string rootFolder, IReadOnlyList<RenamePlanEntry> plan)
+    public IReadOnlyList<RenamePlanEntry> Rerender(string? rootFolder, IReadOnlyList<RenamePlanEntry> plan)
     {
-        var boundary = new PathBoundary(rootFolder);
+        var boundaries = new Dictionary<string, PathBoundary>(StringComparer.Ordinal);
         var threshold = settings.Current.Matching.HighConfidenceThreshold;
         var entries = plan.Select(e =>
         {
@@ -102,12 +119,55 @@ public sealed class RenamePlanner(
             {
                 return e;
             }
-            RenamrError? lowError = e.Confidence >= threshold
+            var root = e.Root ?? rootFolder;
+            if (root is null)
+            {
+                return e;
+            }
+            if (!boundaries.TryGetValue(root, out var boundary))
+            {
+                boundaries[root] = boundary = new PathBoundary(root);
+            }
+            RenamrError? lowError = e.ManualMatch || e.Confidence >= threshold
                 ? null
                 : e.Error is { Code: RenamrErrorCode.LowConfidenceMatch } previous ? previous : RenamrError.From(RenamrErrorCode.LowConfidenceMatch);
-            return BuildEntry(boundary, e.SourcePath, e.Parsed, e.Metadata, e.Confidence, lowError);
+            return BuildEntry(boundary, e.SourcePath, e.Parsed, e.Metadata, e.Confidence, lowError) with
+            {
+                Root = e.Root,
+                Candidates = e.Candidates,
+                ManualMatch = e.ManualMatch,
+            };
         }).ToList();
         return DetectConflicts(entries);
+    }
+
+    /// <summary>
+    /// L'utente ha scelto un risultato per un file: la riga prende quei dati e vale come confermata
+    /// (si rinomina anche senza "Includi bassa confidenza"). Le altre righe si ricontrollano per i conflitti di nome.
+    /// </summary>
+    public IReadOnlyList<RenamePlanEntry> ApplyMatch(string? rootFolder, IReadOnlyList<RenamePlanEntry> plan, string sourcePath, MatchCandidate chosen)
+    {
+        ArgumentNullException.ThrowIfNull(chosen);
+        var updated = plan.Select(e =>
+        {
+            if (!string.Equals(e.SourcePath, sourcePath, StringComparison.Ordinal))
+            {
+                return e;
+            }
+            var candidates = e.Candidates.Any(c => c.Metadata.IsSameEntry(chosen.Metadata)) ? e.Candidates : [chosen, .. e.Candidates];
+            return e with
+            {
+                Parsed = e.Parsed ?? parser.Parse(e.SourcePath),
+                Metadata = chosen.Metadata,
+                Confidence = chosen.Confidence,
+                ManualMatch = true,
+                Candidates = candidates,
+                // Rerender ricalcola nome e stato: si parte da "Pronto", i conflitti li ritrova lui.
+                Status = PlanStatus.Ready,
+                Error = null,
+            };
+        }).ToList();
+        return Rerender(rootFolder, updated);
     }
 
     private RenamePlanEntry BuildEntry(PathBoundary boundary, string path, ParsedMediaName parsed, MediaMetadata metadata, double confidence, RenamrError? lowConfidence)
@@ -192,3 +252,6 @@ public sealed class RenamePlanner(
         Error = RenamrError.From(code, detail),
     };
 }
+
+/// <summary>Un file da analizzare e la cartella che gli fa da recinto.</summary>
+public sealed record PlanSource(string Path, string Root);

@@ -81,6 +81,19 @@
         <Style Selector="Border.ruleCard ctl|FANumberBox">
             <Setter Property="HorizontalAlignment" Value="Stretch" />
         </Style>
+        <!-- "Scegli…" sotto lo stato delle righe incerte: un link, non un pulsante pieno. -->
+        <Style Selector="Button.link">
+            <Setter Property="Padding" Value="2,0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
         <Style Selector="Button.icon">
             <Setter Property="Padding" Value="6" />
             <Setter Property="Background" Value="Transparent" />
@@ -134,7 +147,7 @@
                 <TextBlock Text="{Binding AppVersion}" />
             </Border>
             <TextBlock Grid.Column="2" Classes="caption" VerticalAlignment="Center" HorizontalAlignment="Right"
-                       Text="{Binding RootFolder}"
+                       Text="{Binding SourceLabel}"
                        TextTrimming="CharacterEllipsis"
                        Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
         </Grid>
@@ -207,13 +220,21 @@
                            Theme="{StaticResource BodyTextBlockStyle}"
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                            TextAlignment="Center" TextWrapping="Wrap" />
-                <Button Margin="0,12,0,0" HorizontalAlignment="Center" Classes="accent"
-                        Command="{Binding PickFolderCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ctl:FASymbolIcon Symbol="OpenFolder" FontSize="16" />
-                        <TextBlock Text="{l:Tr PickFolder}" />
-                    </StackPanel>
-                </Button>
+                <!-- Una cartella intera, oppure solo alcuni file (anche da cartelle diverse). -->
+                <StackPanel Margin="0,12,0,0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                    <Button Classes="accent" Command="{Binding PickFolderCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ctl:FASymbolIcon Symbol="OpenFolder" FontSize="16" />
+                            <TextBlock Text="{l:Tr PickFolder}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding PickFilesCommand}" ToolTip.Tip="{l:Tr AddFilesTip}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ctl:FASymbolIcon Symbol="Document" FontSize="16" />
+                            <TextBlock Text="{l:Tr PickFiles}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
                 <!-- Dopo un'analisi annullata o un cambio di modalità: l'analisi online riparte solo da qui. -->
                 <Button HorizontalAlignment="Center"
                         IsVisible="{Binding CanAnalyzeLastFolder}"
@@ -392,7 +413,8 @@
 
         <Grid Grid.Column="1" RowSpacing="12" RowDefinitions="Auto,Auto,Auto,Auto,*">
 
-            <!-- Riepilogo a pillole: niente toolbar, solo informazione -->
+            <!-- Riepilogo a pillole: niente toolbar, solo informazione. A destra si aggiungono file singoli. -->
+            <Grid ColumnDefinitions="*,Auto">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Border Classes="badge success">
                     <TextBlock><Run Text="{l:Tr BadgeReady}" /> <Run Text="{Binding ReadyCount}" /></TextBlock>
@@ -404,6 +426,14 @@
                     <TextBlock><Run Text="{l:Tr BadgeErrors}" /> <Run Text="{Binding ErrorCount}" /></TextBlock>
                 </Border>
             </StackPanel>
+            <Button Grid.Column="1" Command="{Binding PickFilesCommand}" IsEnabled="{Binding !IsBusy}"
+                    ToolTip.Tip="{l:Tr AddFilesTip}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <ctl:FASymbolIcon Symbol="Add" FontSize="14" />
+                    <TextBlock Text="{l:Tr AddFiles}" />
+                </StackPanel>
+            </Button>
+            </Grid>
 
             <!-- Esito dell'esecuzione, con "Annulla" a portata di mano -->
             <ctl:FAInfoBar Grid.Row="1"
@@ -435,14 +465,14 @@
             </StackPanel>
 
             <!-- Intestazione colonne -->
-            <Grid Grid.Row="3" Margin="16,0" ColumnDefinitions="140,*,24,*" ColumnSpacing="12">
+            <Grid Grid.Row="3" Margin="16,0" ColumnDefinitions="140,*,24,*,28" ColumnSpacing="12">
                 <TextBlock Text="{l:Tr ColumnStatus}" Classes="columnHeader" />
                 <TextBlock Grid.Column="1" Text="{l:Tr ColumnOriginal}" Classes="columnHeader" />
                 <TextBlock Grid.Column="3" Text="{l:Tr ColumnProposed}" Classes="columnHeader" />
             </Grid>
 
             <!-- Tabella a due colonne: Originale ➔ Proposto. ListBox virtualizzata: regge decine di migliaia di righe. -->
-            <!-- Tasto destro: formato del nome e lingua al volo. -->
+            <!-- Tasto destro: formato del nome e lingua al volo. Clic su una riga di film o serie: scelta del risultato. -->
             <ListBox x:Name="FileList"
                      Grid.Row="4"
                      Classes="diff"
@@ -454,18 +484,23 @@
                      Padding="0,4">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:FileItemViewModel">
-                        <Grid Margin="4,10" ColumnDefinitions="140,*,24,*" ColumnSpacing="12" Background="Transparent"
-                              Opacity="{Binding Status, Converter={x:Static ui:Ui.RowOpacity}}">
+                        <Grid Margin="4,10,0,10" ColumnDefinitions="140,*,24,*,28" ColumnSpacing="12" Background="Transparent">
 
-                            <Border Classes="badge"
-                                    Classes.success="{Binding Status, Converter={x:Static ui:Ui.IsSuccess}}"
-                                    Classes.caution="{Binding Status, Converter={x:Static ui:Ui.IsCaution}}"
-                                    Classes.critical="{Binding Status, Converter={x:Static ui:Ui.IsCritical}}"
-                                    Classes.neutral="{Binding Status, Converter={x:Static ui:Ui.IsNeutral}}">
-                                <TextBlock Text="{Binding StatusText}" />
-                            </Border>
+                            <StackPanel Spacing="2" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                        Opacity="{Binding Status, Converter={x:Static ui:Ui.RowOpacity}}">
+                                <Border Classes="badge"
+                                        Classes.success="{Binding Status, Converter={x:Static ui:Ui.IsSuccess}}"
+                                        Classes.caution="{Binding Status, Converter={x:Static ui:Ui.IsCaution}}"
+                                        Classes.critical="{Binding Status, Converter={x:Static ui:Ui.IsCritical}}"
+                                        Classes.neutral="{Binding Status, Converter={x:Static ui:Ui.IsNeutral}}">
+                                    <TextBlock Text="{Binding StatusText}" />
+                                </Border>
+                                <Button Classes="link" Content="{l:Tr ChooseMatchShort}" Click="ChooseMatch_Click"
+                                        IsVisible="{Binding SuggestsChoice}" ToolTip.Tip="{l:Tr ChooseMatchTip}" />
+                            </StackPanel>
 
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                        Opacity="{Binding Status, Converter={x:Static ui:Ui.RowOpacity}}">
                                 <TextBlock Text="{Binding OriginalName}"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTip.Tip="{Binding OriginalName}" />
@@ -479,7 +514,8 @@
                             <ctl:FASymbolIcon Grid.Column="2" Symbol="Forward" FontSize="12"
                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
 
-                            <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                            <StackPanel Grid.Column="3" VerticalAlignment="Center"
+                                        Opacity="{Binding Status, Converter={x:Static ui:Ui.RowOpacity}}">
                                 <TextBlock Text="{Binding ProposedName}"
                                            FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis"
@@ -497,6 +533,12 @@
                                            Classes.neutral="{Binding Status, Converter={x:Static ui:Ui.IsNeutral}}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
+
+                            <!-- Togli dall'elenco: il file resta com'è e non torna nemmeno rifacendo l'analisi. -->
+                            <Button Grid.Column="4" Classes="icon" Click="RemoveRow_Click" VerticalAlignment="Center"
+                                    ToolTip.Tip="{l:Tr RemoveFromList}">
+                                <ctl:FASymbolIcon Symbol="Dismiss" FontSize="12" />
+                            </Button>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

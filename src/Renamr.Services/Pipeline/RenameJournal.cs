@@ -32,11 +32,12 @@ public sealed class RenameJournal(IAppPaths paths) : IDisposable
         }
     }
 
-    public void RecordMove(string source, string target)
+    /// <param name="root">Cartella-recinto del file: "Annulla" ricontrolla lo spostamento all'indietro dentro questa.</param>
+    public void RecordMove(string source, string target, string? root = null)
     {
         lock (_gate)
         {
-            Write(new JournalEntry("move", source, target, DateTimeOffset.Now));
+            Write(new JournalEntry("move", source, target, DateTimeOffset.Now, root));
         }
     }
 
@@ -66,4 +67,4 @@ public sealed class RenameJournal(IAppPaths paths) : IDisposable
     }
 }
 
-public sealed record JournalEntry(string Kind, string Source, string? Target, DateTimeOffset At);
+public sealed record JournalEntry(string Kind, string Source, string? Target, DateTimeOffset At, string? Root = null);

@@ -27,6 +27,26 @@ public sealed class FolderPickerService(WindowContext context) : IFolderPickerSe
         });
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
     }
+
+    public async Task<IReadOnlyList<string>> PickFilesAsync(IReadOnlyCollection<string>? extensions)
+    {
+        var window = context.Window ?? throw new InvalidOperationException("Finestra non pronta");
+        var storage = window.StorageProvider;
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = Strings.Current.PickFilesTitle,
+            AllowMultiple = true,
+            SuggestedStartLocation = await storage.TryGetWellKnownFolderAsync(WellKnownFolder.Videos),
+            // Film e serie: solo i tipi che Renamr riconosce (maiuscole e minuscole, Linux le distingue).
+            FileTypeFilter = extensions is null
+                ? null
+                : [new FilePickerFileType(Strings.Current.ModeMedia)
+                {
+                    Patterns = [.. extensions.SelectMany(e => new[] { "*" + e.ToLowerInvariant(), "*" + e.ToUpperInvariant() }).Distinct()],
+                }],
+        });
+        return [.. files.Select(f => f.TryGetLocalPath()).OfType<string>()];
+    }
 }
 
 /// <summary>

@@ -99,7 +99,7 @@ public sealed class MediaFileProcessor(
                     return Failed(entry, moved.Error!);
                 }
                 current = target;
-                journal.RecordMove(source, target);
+                journal.RecordMove(source, target, boundary.Root);
 
                 // 6) File accessori.
                 warnings.AddRange(await MoveCompanionsAsync(boundary, source, target, ct).ConfigureAwait(false));
@@ -171,7 +171,7 @@ public sealed class MediaFileProcessor(
             var moved = await io.MoveAsync(file, companionTarget, ct).ConfigureAwait(false);
             if (moved.Succeeded)
             {
-                journal.RecordMove(file, companionTarget);
+                journal.RecordMove(file, companionTarget, boundary.Root);
             }
             else
             {
