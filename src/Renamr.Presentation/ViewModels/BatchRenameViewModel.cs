@@ -30,6 +30,9 @@ public sealed partial class BatchRenameViewModel : ObservableObject
 
     public ObservableCollection<BatchRuleViewModel> Rules { get; } = [];
 
+    /// <summary>I nomi attuali dei file (senza estensione) nell'ordine scelto, per "Nomi da elenco". Lo imposta la finestra principale.</summary>
+    public Func<IReadOnlyList<string>>? CurrentNames { get; set; }
+
     public static IReadOnlyList<BatchRuleKind> RuleKinds { get; } =
     [
         new("numerazione", nameof(Strings.RuleNumbering), () => new NumberingRuleViewModel()),
@@ -41,6 +44,12 @@ public sealed partial class BatchRenameViewModel : ObservableObject
         new("pulisci", nameof(Strings.RuleCleanup), () => new CleanupRuleViewModel()),
         new("lettereInNumeri", nameof(Strings.RuleLettersToDigits), () => new LettersToDigitsRuleViewModel()),
         new("estensione", nameof(Strings.RuleExtension), () => new ExtensionRuleViewModel()),
+        new("sposta", nameof(Strings.RuleMove), () => new MoveTextRuleViewModel()),
+        new("scambia", nameof(Strings.RuleSwap), () => new SwapPartsRuleViewModel()),
+        new("rinumera", nameof(Strings.RuleRenumber), () => new RenumberRuleViewModel()),
+        new("rifila", nameof(Strings.RuleTrim), () => new TrimRuleViewModel()),
+        new("sostituzioniMultiple", nameof(Strings.RuleReplaceList), () => new ReplaceListRuleViewModel()),
+        new("elenco", nameof(Strings.RuleNameList), () => new NameListRuleViewModel()),
     ];
 
     /// <summary>Nella lingua dell'interfaccia: la finestra le rilegge quando si ricrea dopo un cambio di lingua.</summary>

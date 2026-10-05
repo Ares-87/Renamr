@@ -16,6 +16,12 @@ public sealed partial class RuleTemplateSelector : DataTemplateSelector
     public DataTemplate? Cleanup { get; set; }
     public DataTemplate? LettersToDigits { get; set; }
     public DataTemplate? Extension { get; set; }
+    public DataTemplate? MoveText { get; set; }
+    public DataTemplate? SwapParts { get; set; }
+    public DataTemplate? Renumber { get; set; }
+    public DataTemplate? Trim { get; set; }
+    public DataTemplate? NameList { get; set; }
+    public DataTemplate? ReplaceList { get; set; }
 
     protected override DataTemplate? SelectTemplateCore(object item) => item switch
     {
@@ -28,6 +34,12 @@ public sealed partial class RuleTemplateSelector : DataTemplateSelector
         CleanupRuleViewModel => Cleanup,
         LettersToDigitsRuleViewModel => LettersToDigits,
         ExtensionRuleViewModel => Extension,
+        MoveTextRuleViewModel => MoveText,
+        SwapPartsRuleViewModel => SwapParts,
+        RenumberRuleViewModel => Renumber,
+        TrimRuleViewModel => Trim,
+        NameListRuleViewModel => NameList,
+        ReplaceListRuleViewModel => ReplaceList,
         _ => null,
     };
 

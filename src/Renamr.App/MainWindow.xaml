@@ -105,6 +105,9 @@
                             <CheckBox Content="{x:Bind loc:Strings.Current.MatchCase}" IsChecked="{x:Bind MatchCase, Mode=TwoWay}" />
                             <CheckBox Content="{x:Bind loc:Strings.Current.UseRegex}" IsChecked="{x:Bind UseRegex, Mode=TwoWay}" />
                         </StackPanel>
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:ReplaceTextRuleViewModel.Occurrences}" Loaded="RuleChoice_Loaded"
+                                  SelectedIndex="{x:Bind OccurrenceIndex, Mode=TwoWay}" />
                         <TextBlock Text="{x:Bind Error, Mode=OneWay}" Visibility="{x:Bind HasError, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
@@ -128,6 +131,8 @@
                             <NumberBox Grid.Column="1" Width="110" Value="{x:Bind Index, Mode=TwoWay}" Minimum="0"
                                        SpinButtonPlacementMode="Compact" Visibility="{x:Bind IsAtIndex, Mode=OneWay}" />
                         </Grid>
+                        <TextBox Text="{x:Bind Anchor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="{x:Bind loc:Strings.Current.InsertAnchorPlaceholder}"
+                                 Visibility="{x:Bind IsAtText, Mode=OneWay}" />
                     </StackPanel>
                 </Border>
             </DataTemplate>
@@ -144,10 +149,13 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <NumberBox Header="{x:Bind loc:Strings.Current.RemoveCount}" Value="{x:Bind Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact" />
+                            <NumberBox Header="{x:Bind loc:Strings.Current.RemoveCount}" Value="{x:Bind Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact"
+                                       Visibility="{x:Bind IsCount, Mode=OneWay}" />
                             <NumberBox Grid.Column="1" Header="{x:Bind loc:Strings.Current.RemoveFrom}" Value="{x:Bind From, Mode=TwoWay}" Minimum="1"
                                        SpinButtonPlacementMode="Compact" Visibility="{x:Bind IsRange, Mode=OneWay}" />
                         </Grid>
+                        <TextBox Text="{x:Bind Characters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="{x:Bind loc:Strings.Current.RemoveCharactersPlaceholder}"
+                                 Visibility="{x:Bind IsCharacterList, Mode=OneWay}" />
                     </StackPanel>
                 </Border>
             </DataTemplate>
@@ -216,6 +224,175 @@
                 </Border>
             </DataTemplate>
 
+            <DataTemplate x:Key="MoveTextRuleTemplate" x:DataType="vm:MoveTextRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <ComboBox HorizontalAlignment="Stretch" Header="{x:Bind loc:Strings.Current.MoveWhat}"
+                                  ItemsSource="{x:Bind vm:MoveTextRuleViewModel.Sources}" Loaded="RuleChoice_Loaded"
+                                  SelectedIndex="{x:Bind SourceIndex, Mode=TwoWay}" />
+                        <StackPanel Spacing="8" Visibility="{x:Bind IsText, Mode=OneWay}">
+                            <TextBox Text="{x:Bind Find, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="{x:Bind loc:Strings.Current.MoveFindPlaceholder}" />
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <CheckBox Content="{x:Bind loc:Strings.Current.MatchCase}" IsChecked="{x:Bind MatchCase, Mode=TwoWay}" />
+                                <CheckBox Content="{x:Bind loc:Strings.Current.UseRegex}" IsChecked="{x:Bind UseRegex, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Grid ColumnSpacing="8" Visibility="{x:Bind IsCharacters, Mode=OneWay}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <NumberBox Header="{x:Bind loc:Strings.Current.RemoveFrom}" Value="{x:Bind From, Mode=TwoWay}" Minimum="1" SpinButtonPlacementMode="Compact" />
+                            <NumberBox Grid.Column="1" Header="{x:Bind loc:Strings.Current.RemoveCount}" Value="{x:Bind Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact" />
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox HorizontalAlignment="Stretch" Header="{x:Bind loc:Strings.Current.MoveWhere}" Tag="Target"
+                                      ItemsSource="{x:Bind vm:MoveTextRuleViewModel.Targets}" Loaded="RuleChoice_Loaded"
+                                      SelectedIndex="{x:Bind TargetIndex, Mode=TwoWay}" />
+                            <NumberBox Grid.Column="1" Width="110" VerticalAlignment="Bottom" Value="{x:Bind TargetPosition, Mode=TwoWay}" Minimum="0"
+                                       SpinButtonPlacementMode="Compact" Visibility="{x:Bind IsAtIndex, Mode=OneWay}" />
+                        </Grid>
+                        <TextBox Header="{x:Bind loc:Strings.Current.NumberingSeparator}"
+                                 Text="{x:Bind Separator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="{x:Bind Error, Mode=OneWay}" Visibility="{x:Bind HasError, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="SwapPartsRuleTemplate" x:DataType="vm:SwapPartsRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Header="{x:Bind loc:Strings.Current.NumberingSeparator}"
+                                     Text="{x:Bind Separator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <NumberBox Grid.Column="1" Header="{x:Bind loc:Strings.Current.SwapOccurrence}" Value="{x:Bind Occurrence, Mode=TwoWay}" Minimum="1"
+                                       SpinButtonPlacementMode="Compact" />
+                        </Grid>
+                        <CheckBox Content="{x:Bind loc:Strings.Current.CountFromEnd}" IsChecked="{x:Bind FromEnd, Mode=TwoWay}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="RenumberRuleTemplate" x:DataType="vm:RenumberRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <NumberBox Header="{x:Bind loc:Strings.Current.RenumberWhich}" Value="{x:Bind Which, Mode=TwoWay}" Minimum="1" SpinButtonPlacementMode="Compact" />
+                            <CheckBox Grid.Column="1" VerticalAlignment="Bottom" Content="{x:Bind loc:Strings.Current.CountFromEnd}" IsChecked="{x:Bind FromEnd, Mode=TwoWay}" />
+                        </Grid>
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:RenumberRuleViewModel.Modes}" Loaded="RuleChoice_Loaded"
+                                  SelectedIndex="{x:Bind ModeIndex, Mode=TwoWay}" />
+                        <Grid ColumnSpacing="8" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <NumberBox Header="{x:Bind loc:Strings.Current.NumberingFrom}" Value="{x:Bind Start, Mode=TwoWay}" SpinButtonPlacementMode="Compact"
+                                       Visibility="{x:Bind IsSequence, Mode=OneWay}" />
+                            <NumberBox Grid.Column="1" Header="{x:Bind loc:Strings.Current.NumberingStep}" Value="{x:Bind Step, Mode=TwoWay}" SpinButtonPlacementMode="Compact"
+                                       Visibility="{x:Bind IsSequence, Mode=OneWay}" />
+                            <NumberBox Grid.ColumnSpan="2" Header="{x:Bind loc:Strings.Current.RenumberAdd}" Value="{x:Bind Add, Mode=TwoWay}" SpinButtonPlacementMode="Compact"
+                                       Visibility="{x:Bind IsAdd, Mode=OneWay}" />
+                            <NumberBox Grid.Row="1" Header="{x:Bind loc:Strings.Current.NumberingDigits}" Value="{x:Bind Digits, Mode=TwoWay}" Minimum="0" Maximum="12"
+                                       SpinButtonPlacementMode="Compact"
+                                       ToolTipService.ToolTip="{x:Bind loc:Strings.Current.RenumberDigitsTip}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="TrimRuleTemplate" x:DataType="vm:TrimRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <TextBox Header="{x:Bind loc:Strings.Current.TrimCharacters}"
+                                 Text="{x:Bind Characters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind vm:TrimRuleViewModel.Places}" Loaded="RuleChoice_Loaded"
+                                  SelectedIndex="{x:Bind WhereIndex, Mode=TwoWay}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="NameListRuleTemplate" x:DataType="vm:NameListRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <TextBox Text="{x:Bind Names, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="{x:Bind loc:Strings.Current.NameListPlaceholder}"
+                                 AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="96" MaxHeight="240"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+                        <Button Content="{x:Bind loc:Strings.Current.NameListFill}" Command="{x:Bind FillWithCurrentNamesCommand}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ReplaceListRuleTemplate" x:DataType="vm:ReplaceListRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="8">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <ItemsControl ItemsSource="{x:Bind Pairs}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ReplacePairViewModel">
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Text="{x:Bind Find, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="{x:Bind loc:Strings.Current.ReplaceFind}" />
+                                        <TextBlock Grid.Column="1" Text="➔" VerticalAlignment="Center" />
+                                        <TextBox Grid.Column="2" Text="{x:Bind Replacement, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button Grid.Column="3" Style="{StaticResource RuleIconButtonStyle}" Command="{x:Bind RemoveCommand}"
+                                                ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ReplaceListRemovePair}">
+                                            <FontIcon Glyph="&#xE711;" FontSize="12" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Command="{x:Bind AddPairCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                <TextBlock Text="{x:Bind loc:Strings.Current.ReplaceListAdd}" />
+                            </StackPanel>
+                        </Button>
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <CheckBox Content="{x:Bind loc:Strings.Current.MatchCase}" IsChecked="{x:Bind MatchCase, Mode=TwoWay}" />
+                            <CheckBox Content="{x:Bind loc:Strings.Current.UseRegex}" IsChecked="{x:Bind UseRegex, Mode=TwoWay}" />
+                        </StackPanel>
+                        <TextBlock Text="{x:Bind Error, Mode=OneWay}" Visibility="{x:Bind HasError, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
             <ui:RuleTemplateSelector x:Key="RuleTemplates"
                                      Numbering="{StaticResource NumberingRuleTemplate}"
                                      NewName="{StaticResource NewNameRuleTemplate}"
@@ -225,7 +402,13 @@
                                      ChangeCase="{StaticResource ChangeCaseRuleTemplate}"
                                      Cleanup="{StaticResource CleanupRuleTemplate}"
                                      LettersToDigits="{StaticResource LettersToDigitsRuleTemplate}"
-                                     Extension="{StaticResource ExtensionRuleTemplate}" />
+                                     Extension="{StaticResource ExtensionRuleTemplate}"
+                                     MoveText="{StaticResource MoveTextRuleTemplate}"
+                                     SwapParts="{StaticResource SwapPartsRuleTemplate}"
+                                     Renumber="{StaticResource RenumberRuleTemplate}"
+                                     Trim="{StaticResource TrimRuleTemplate}"
+                                     NameList="{StaticResource NameListRuleTemplate}"
+                                     ReplaceList="{StaticResource ReplaceListRuleTemplate}" />
         </Grid.Resources>
 
         <Grid.RowDefinitions>

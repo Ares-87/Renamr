@@ -332,6 +332,9 @@
                                             <CheckBox Content="{l:Tr MatchCase}" IsChecked="{Binding MatchCase}" />
                                             <CheckBox Content="{l:Tr UseRegex}" IsChecked="{Binding UseRegex}" />
                                         </WrapPanel>
+                                        <ComboBox HorizontalAlignment="Stretch"
+                                                  ItemsSource="{x:Static vm:ReplaceTextRuleViewModel.Occurrences}"
+                                                  SelectedIndex="{Binding OccurrenceIndex}" />
                                         <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" Classes="caption" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
                                     </StackPanel>
@@ -349,6 +352,7 @@
                                             <ctl:FANumberBox Grid.Column="1" Width="110" Value="{Binding Index, Mode=TwoWay}" Minimum="0"
                                                              SpinButtonPlacementMode="Compact" IsVisible="{Binding IsAtIndex}" />
                                         </Grid>
+                                        <TextBox Text="{Binding Anchor}" PlaceholderText="{l:Tr InsertAnchorPlaceholder}" IsVisible="{Binding IsAtText}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -360,10 +364,12 @@
                                                   ItemsSource="{x:Static vm:RemoveCharactersRuleViewModel.Modes}"
                                                   SelectedIndex="{Binding ModeIndex}" />
                                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                                            <ctl:FANumberBox Header="{l:Tr RemoveCount}" Value="{Binding Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact" />
+                                            <ctl:FANumberBox Header="{l:Tr RemoveCount}" Value="{Binding Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact"
+                                                             IsVisible="{Binding IsCount}" />
                                             <ctl:FANumberBox Grid.Column="1" Header="{l:Tr RemoveFrom}" Value="{Binding From, Mode=TwoWay}" Minimum="1"
                                                              SpinButtonPlacementMode="Compact" IsVisible="{Binding IsRange}" />
                                         </Grid>
+                                        <TextBox Text="{Binding Characters}" PlaceholderText="{l:Tr RemoveCharactersPlaceholder}" IsVisible="{Binding IsCharacterList}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -413,6 +419,146 @@
                                                   ItemsSource="{x:Static vm:ExtensionRuleViewModel.Modes}"
                                                   SelectedIndex="{Binding ModeIndex}" />
                                         <TextBox Text="{Binding NewExtension}" PlaceholderText="jpg" IsVisible="{Binding IsReplace}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:MoveTextRuleViewModel">
+                                <Border Classes="ruleCard">
+                                    <StackPanel Spacing="8">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{l:Tr MoveWhat}" />
+                                            <ComboBox HorizontalAlignment="Stretch"
+                                                      ItemsSource="{x:Static vm:MoveTextRuleViewModel.Sources}"
+                                                      SelectedIndex="{Binding SourceIndex}" />
+                                        </StackPanel>
+                                        <StackPanel Spacing="8" IsVisible="{Binding IsText}">
+                                            <TextBox Text="{Binding Find}" PlaceholderText="{l:Tr MoveFindPlaceholder}" />
+                                            <WrapPanel ItemSpacing="16">
+                                                <CheckBox Content="{l:Tr MatchCase}" IsChecked="{Binding MatchCase}" />
+                                                <CheckBox Content="{l:Tr UseRegex}" IsChecked="{Binding UseRegex}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsCharacters}">
+                                            <ctl:FANumberBox Header="{l:Tr RemoveFrom}" Value="{Binding From, Mode=TwoWay}" Minimum="1" SpinButtonPlacementMode="Compact" />
+                                            <ctl:FANumberBox Grid.Column="1" Header="{l:Tr RemoveCount}" Value="{Binding Count, Mode=TwoWay}" Minimum="0" SpinButtonPlacementMode="Compact" />
+                                        </Grid>
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{l:Tr MoveWhere}" />
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                <ComboBox HorizontalAlignment="Stretch"
+                                                          ItemsSource="{x:Static vm:MoveTextRuleViewModel.Targets}"
+                                                          SelectedIndex="{Binding TargetIndex}" />
+                                                <ctl:FANumberBox Grid.Column="1" Width="110" Value="{Binding TargetPosition, Mode=TwoWay}" Minimum="0"
+                                                                 SpinButtonPlacementMode="Compact" IsVisible="{Binding IsAtIndex}" />
+                                            </Grid>
+                                        </StackPanel>
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{l:Tr NumberingSeparator}" />
+                                            <TextBox Text="{Binding Separator}" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" Classes="caption" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:SwapPartsRuleViewModel">
+                                <Border Classes="ruleCard">
+                                    <StackPanel Spacing="8">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                            <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                                                <TextBlock Text="{l:Tr NumberingSeparator}" />
+                                                <TextBox Text="{Binding Separator}" />
+                                            </StackPanel>
+                                            <ctl:FANumberBox Grid.Column="1" Header="{l:Tr SwapOccurrence}" Value="{Binding Occurrence, Mode=TwoWay}" Minimum="1"
+                                                             SpinButtonPlacementMode="Compact" />
+                                        </Grid>
+                                        <CheckBox Content="{l:Tr CountFromEnd}" IsChecked="{Binding FromEnd}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:RenumberRuleViewModel">
+                                <Border Classes="ruleCard">
+                                    <StackPanel Spacing="8">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <ctl:FANumberBox Header="{l:Tr RenumberWhich}" Value="{Binding Which, Mode=TwoWay}" Minimum="1" SpinButtonPlacementMode="Compact" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Bottom" Content="{l:Tr CountFromEnd}" IsChecked="{Binding FromEnd}" />
+                                        </Grid>
+                                        <ComboBox HorizontalAlignment="Stretch"
+                                                  ItemsSource="{x:Static vm:RenumberRuleViewModel.Modes}"
+                                                  SelectedIndex="{Binding ModeIndex}" />
+                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                                            <ctl:FANumberBox Header="{l:Tr NumberingFrom}" Value="{Binding Start, Mode=TwoWay}" SpinButtonPlacementMode="Compact"
+                                                             IsVisible="{Binding IsSequence}" />
+                                            <ctl:FANumberBox Grid.Column="1" Header="{l:Tr NumberingStep}" Value="{Binding Step, Mode=TwoWay}" SpinButtonPlacementMode="Compact"
+                                                             IsVisible="{Binding IsSequence}" />
+                                            <ctl:FANumberBox Grid.ColumnSpan="2" Header="{l:Tr RenumberAdd}" Value="{Binding Add, Mode=TwoWay}" SpinButtonPlacementMode="Compact"
+                                                             IsVisible="{Binding IsAdd}" />
+                                            <ctl:FANumberBox Grid.Row="1" Header="{l:Tr NumberingDigits}" Value="{Binding Digits, Mode=TwoWay}" Minimum="0" Maximum="12"
+                                                             SpinButtonPlacementMode="Compact" ToolTip.Tip="{l:Tr RenumberDigitsTip}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:TrimRuleViewModel">
+                                <Border Classes="ruleCard">
+                                    <StackPanel Spacing="8">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{l:Tr TrimCharacters}" />
+                                            <TextBox Text="{Binding Characters}" />
+                                        </StackPanel>
+                                        <ComboBox HorizontalAlignment="Stretch"
+                                                  ItemsSource="{x:Static vm:TrimRuleViewModel.Places}"
+                                                  SelectedIndex="{Binding WhereIndex}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:NameListRuleViewModel">
+                                <Border Classes="ruleCard">
+                                    <StackPanel Spacing="8">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
+                                        <TextBox Text="{Binding Names}" PlaceholderText="{l:Tr NameListPlaceholder}"
+                                                 AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="96" MaxHeight="240" />
+                                        <Button Content="{l:Tr NameListFill}" Command="{Binding FillWithCurrentNamesCommand}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:ReplaceListRuleViewModel">
+                                <Border Classes="ruleCard">
+                                    <StackPanel Spacing="8">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
+                                        <ItemsControl ItemsSource="{Binding Pairs}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:ReplacePairViewModel">
+                                                    <Grid ColumnDefinitions="*,Auto,*,Auto" ColumnSpacing="4">
+                                                        <TextBox Text="{Binding Find}" PlaceholderText="{l:Tr ReplaceFind}" />
+                                                        <TextBlock Grid.Column="1" Text="➔" VerticalAlignment="Center" />
+                                                        <TextBox Grid.Column="2" Text="{Binding Replacement}" />
+                                                        <Button Grid.Column="3" Classes="icon" Command="{Binding RemoveCommand}" ToolTip.Tip="{l:Tr ReplaceListRemovePair}">
+                                                            <ctl:FASymbolIcon Symbol="Dismiss" FontSize="12" />
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Button Command="{Binding AddPairCommand}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <ctl:FASymbolIcon Symbol="Add" FontSize="12" />
+                                                <TextBlock Text="{l:Tr ReplaceListAdd}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <WrapPanel ItemSpacing="16">
+                                            <CheckBox Content="{l:Tr MatchCase}" IsChecked="{Binding MatchCase}" />
+                                            <CheckBox Content="{l:Tr UseRegex}" IsChecked="{Binding UseRegex}" />
+                                        </WrapPanel>
+                                        <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" Classes="caption" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
