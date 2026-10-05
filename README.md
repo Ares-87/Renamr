@@ -44,6 +44,7 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 - [Building from source](#building-from-source)
 - [Publishing a release](#publishing-a-release)
 - [Project layout](#project-layout)
+- [License](#license)
 
 ## Features
 
@@ -337,3 +338,12 @@ docs/ARCHITETTURA.md    architecture and design decisions (in Italian)
 
 Stack: .NET 10 · WinUI 3 (Windows App SDK) · Avalonia 12 + FluentAvalonia · CommunityToolkit.Mvvm · TagLibSharp · TMDbLib ·
 MusicBrainz API · Polly.
+
+## License
+
+Renamr is free for personal and other noncommercial use, under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). You may use, copy, change and share it for any noncommercial purpose, as
+long as you pass on the license and its `Required Notice` line. Commercial use is not allowed without the author's
+permission.
+
+Contributions are welcome: issues, ideas and pull requests are all appreciated.
