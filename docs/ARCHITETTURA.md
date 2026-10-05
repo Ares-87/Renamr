@@ -203,7 +203,7 @@ In alto nella finestra un selettore sceglie tra **Film e serie** (tutto quanto d
 
 ## 14. Logo, icona e layout
 
-- Sorgenti in `assets/brand`: `renamr-logo.svg` (navy, tema chiaro), `renamr-logo-dark.svg` (bianco, tema scuro), `renamr-icon.svg` (simbolo quadrato "R" con cursore) e `renamr.ico` multi-risoluzione; `make_svg.py` e `make_png.py` rigenerano tutto. Colori: navy `#0F1B3D`, blu accento `#2F6BFF` (anche colore d'accento dell'app Linux).
+- Sorgenti in `assets/brand`: `renamr-logo.svg` (navy, tema chiaro), `renamr-logo-dark.svg` (bianco, tema scuro), `renamr-icon.svg` (simbolo quadrato con la "m" stilizzata), i PNG esportati e `renamr.ico` multi-risoluzione, forniti da Daniele. Le immagini delle app (`src/*/Assets`: `logo-*`, `wordmark-*`, `renamr-icon.png`, `renamr.ico`) si ricavano da questi file con ImageMagick (logo alto 144 px, wordmark senza sottotitolo alto 80 px). Colori: navy `#0F1B3D`, blu accento `#2F6BFF` (anche colore d'accento dell'app Linux).
 - Le due app usano PNG ricavati da queste sorgenti (`Assets/`): logo grande nella schermata iniziale, solo scritta nella barra del titolo, scelti per tema (`ThemeDictionaries` in WinUI, `Resources.ThemeDictionaries` in Avalonia). `renamr.ico` è l'icona di Renamr.exe e della finestra Windows; `renamr-icon.png` quella della finestra Linux.
 - Layout: in alto logo e versione, cartella aperta a destra; sotto, le due modalità e l'unico pulsante Impostazioni, sempre visibile; poi il contenuto e la barra azione.
 

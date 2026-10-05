@@ -319,6 +319,8 @@ with generated release notes. GitHub adds the source code archives on its own. A
 workflow.
 
 Without pushing a tag yourself: open **Actions → Build and release → Run workflow** on `main` and tick **Publish a release**.
+To publish the same version again with new files, also tick **Replace an existing release**: the old release and its tag
+are removed and recreated from the current `main`.
 The workflow creates the tag `v<Version>` and the release in one go.
 
 ## Project layout
