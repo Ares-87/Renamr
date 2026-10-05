@@ -105,6 +105,7 @@ public abstract partial class BatchRuleViewModel : ObservableObject
                 RemoveAccents = r.RemoveAccents,
                 RemoveDigits = r.RemoveDigits,
             },
+            LettersToDigitsRule r => new LettersToDigitsRuleViewModel { A = r.A, E = r.E, I = r.I, O = r.O, S = r.S, T = r.T, B = r.B, G = r.G },
             ExtensionRule r => new ExtensionRuleViewModel { ModeIndex = (int)r.Mode, NewExtension = r.NewExtension },
             _ => throw new ArgumentOutOfRangeException(nameof(rule), rule, "Regola sconosciuta"),
         };
@@ -303,6 +304,40 @@ public sealed partial class CleanupRuleViewModel : BatchRuleViewModel
         RemoveAccents = RemoveAccents,
         RemoveDigits = RemoveDigits,
     };
+}
+
+/// <summary>Una casella per lettera: "A ➔ 4", "E ➔ 3"… (le etichette sono uguali in tutte le lingue).</summary>
+public sealed partial class LettersToDigitsRuleViewModel : BatchRuleViewModel
+{
+    [ObservableProperty]
+    public partial bool A { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool E { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool I { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool O { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool S { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool T { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool B { get; set; }
+
+    [ObservableProperty]
+    public partial bool G { get; set; }
+
+    public override string Title => Strings.Current.RuleLettersToDigits;
+
+    public override string Description => Strings.Current.RuleLettersToDigitsDesc;
+
+    public override BatchRule ToRule() => new LettersToDigitsRule { Enabled = Enabled, A = A, E = E, I = I, O = O, S = S, T = T, B = B, G = G };
 }
 
 public sealed partial class ExtensionRuleViewModel : BatchRuleViewModel

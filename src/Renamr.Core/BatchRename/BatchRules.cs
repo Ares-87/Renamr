@@ -25,6 +25,7 @@ public sealed class BatchRuleException(string message) : Exception(message);
 [JsonDerivedType(typeof(RemoveCharactersRule), "rimuovi")]
 [JsonDerivedType(typeof(ChangeCaseRule), "maiuscole")]
 [JsonDerivedType(typeof(CleanupRule), "pulisci")]
+[JsonDerivedType(typeof(LettersToDigitsRule), "lettereInNumeri")]
 [JsonDerivedType(typeof(ExtensionRule), "estensione")]
 public abstract record BatchRule
 {
@@ -316,6 +317,50 @@ public sealed record CleanupRule : BatchRule
             result = BatchText.Digits().Replace(result, string.Empty);
         }
         return (BatchText.CollapseSpaces(result), extension);
+    }
+}
+
+// ---- Lettere in numeri -----------------------------------------------------------------------------------
+
+/// <summary>
+/// Sostituisce le lettere con i numeri che le somigliano ("Bone Lake" ➔ "B0n3 L4k3"), maiuscole e minuscole.
+/// Solo sostituzioni che si leggono ancora come lettere; A, E, I, O, S, T sono attive di base,
+/// B e G (meno immediate da leggere) si accendono a mano. Il riconoscimento dei titoli fa il contrario.
+/// </summary>
+public sealed record LettersToDigitsRule : BatchRule
+{
+    /// <summary>Le sostituzioni offerte, nell'ordine mostrato nella regola.</summary>
+    public static IReadOnlyList<(char Letter, char Digit)> Substitutions { get; } =
+        [('a', '4'), ('e', '3'), ('i', '1'), ('o', '0'), ('s', '5'), ('t', '7'), ('b', '8'), ('g', '6')];
+
+    public bool A { get; init; } = true;
+    public bool E { get; init; } = true;
+    public bool I { get; init; } = true;
+    public bool O { get; init; } = true;
+    public bool S { get; init; } = true;
+    public bool T { get; init; } = true;
+    public bool B { get; init; }
+    public bool G { get; init; }
+
+    public override string Label => "Lettere in numeri";
+
+    public override (string Stem, string Extension) Apply(string stem, string extension, BatchRuleContext context)
+    {
+        bool[] active = [A, E, I, O, S, T, B, G];
+        var chars = stem.ToCharArray();
+        for (var i = 0; i < chars.Length; i++)
+        {
+            var lower = char.ToLowerInvariant(chars[i]);
+            for (var k = 0; k < Substitutions.Count; k++)
+            {
+                if (active[k] && Substitutions[k].Letter == lower)
+                {
+                    chars[i] = Substitutions[k].Digit;
+                    break;
+                }
+            }
+        }
+        return (new string(chars), extension);
     }
 }
 

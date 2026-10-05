@@ -64,6 +64,8 @@
   "RuleCaseDesc": "Changes the capitalization of the name (not of the extension).",
   "RuleCleanup": "Clean name",
   "RuleCleanupDesc": "Removes separators, brackets, accents and double spaces.",
+  "RuleLettersToDigits": "Letters to numbers",
+  "RuleLettersToDigitsDesc": "Replaces letters with look-alike numbers: “Bone Lake” ➔ “B0n3 L4k3”.",
   "RuleExtension": "Extension",
   "RuleExtensionDesc": "Changes only the extension in the name: the file content is not converted.",
 

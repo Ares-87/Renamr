@@ -166,4 +166,24 @@ public class BatchRenameEngineTests
         Assert.Equal(ExtensionMode.Upper, Assert.IsType<ExtensionRule>(back.Rules[2]).Mode);
         Assert.Equal(BatchSortBy.Size, back.SortBy);
     }
+
+    [Fact]
+    public void Letters_to_digits_uses_only_the_chosen_letters()
+    {
+        Assert.Equal(["B0n3 L4k3.mkv"], Names([F("Bone Lake.mkv")], new LettersToDigitsRule()));
+        Assert.Equal(["7H3 G0D5.txt"], Names([F("THE GODS.txt")], new LettersToDigitsRule()));
+        Assert.Equal(["8ono 6a77o.txt"], Names([F("bono gatto.txt")], new LettersToDigitsRule { A = false, O = false, B = true, G = true }));
+    }
+
+    [Fact]
+    public void Letters_to_digits_round_trips_through_json()
+    {
+        var json = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
+        var options = new BatchRenameOptions { Rules = [new LettersToDigitsRule { T = false, G = true }] };
+        var back = JsonSerializer.Deserialize<BatchRenameOptions>(JsonSerializer.Serialize(options, json), json)!;
+        var rule = Assert.IsType<LettersToDigitsRule>(back.Rules[0]);
+        Assert.False(rule.T);
+        Assert.True(rule.G);
+        Assert.True(rule.A);
+    }
 }

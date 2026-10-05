@@ -64,6 +64,8 @@
   "RuleCaseDesc": "Ändert die Groß- und Kleinschreibung des Namens (nicht der Endung).",
   "RuleCleanup": "Namen bereinigen",
   "RuleCleanupDesc": "Entfernt Trennzeichen, Klammern, Akzente und doppelte Leerzeichen.",
+  "RuleLettersToDigits": "Buchstaben zu Ziffern",
+  "RuleLettersToDigitsDesc": "Ersetzt Buchstaben durch ähnlich aussehende Ziffern: „Bone Lake“ ➔ „B0n3 L4k3“.",
   "RuleExtension": "Dateiendung",
   "RuleExtensionDesc": "Ändert nur die Endung im Namen: der Dateiinhalt wird nicht umgewandelt.",
 

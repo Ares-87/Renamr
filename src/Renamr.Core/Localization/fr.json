@@ -64,6 +64,8 @@
   "RuleCaseDesc": "Change les majuscules et minuscules du nom (pas de l'extension).",
   "RuleCleanup": "Nettoyer le nom",
   "RuleCleanupDesc": "Retire séparateurs, parenthèses, accents et doubles espaces.",
+  "RuleLettersToDigits": "Lettres en chiffres",
+  "RuleLettersToDigitsDesc": "Remplace les lettres par les chiffres qui leur ressemblent : « Bone Lake » ➔ « B0n3 L4k3 ».",
   "RuleExtension": "Extension",
   "RuleExtensionDesc": "Change seulement l'extension dans le nom : le contenu du fichier n'est pas converti.",
 

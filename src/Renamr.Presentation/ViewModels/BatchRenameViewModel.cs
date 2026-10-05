@@ -39,6 +39,7 @@ public sealed partial class BatchRenameViewModel : ObservableObject
         new("rimuovi", nameof(Strings.RuleRemoveChars), () => new RemoveCharactersRuleViewModel()),
         new("maiuscole", nameof(Strings.RuleCase), () => new ChangeCaseRuleViewModel()),
         new("pulisci", nameof(Strings.RuleCleanup), () => new CleanupRuleViewModel()),
+        new("lettereInNumeri", nameof(Strings.RuleLettersToDigits), () => new LettersToDigitsRuleViewModel()),
         new("estensione", nameof(Strings.RuleExtension), () => new ExtensionRuleViewModel()),
     ];
 
