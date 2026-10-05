@@ -65,6 +65,7 @@ public sealed partial class MainViewModel : ObservableObject
         Batch = new BatchRenameViewModel(batchState.Options);
         Batch.RulesChanged += (_, _) => ScheduleBatchRefresh(rescan: false);
         Batch.ScopeChanged += (_, _) => ScheduleBatchRefresh(rescan: true);
+        Batch.PickFolder = () => _folderPicker.PickFolderAsync();
         Batch.CurrentNames = () =>
         {
             var options = Batch.ToOptions();
@@ -644,7 +645,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (!options.DryRun)
         {
             // I file aggiunti a mano seguono il loro nuovo nome: rifacendo l'analisi restano nell'elenco.
-            _lastRunMoves = [.. results.Where(r => r is { Status: PlanStatus.Done, TargetPath: not null }).Select(r => (r.SourcePath, r.TargetPath!))];
+            _lastRunMoves = [.. results.Where(r => r is { Status: PlanStatus.Done, TargetPath: not null, Copy: false }).Select(r => (r.SourcePath, r.TargetPath!))];
             FollowAddedFiles(_lastRunMoves);
         }
 

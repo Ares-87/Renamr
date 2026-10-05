@@ -71,6 +71,51 @@ public sealed partial class BatchRenameViewModel : ObservableObject
     [ObservableProperty]
     public partial string Filter { get; set; } = string.Empty;
 
+    public static IReadOnlyList<string> ItemOptions => [Strings.Current.ItemsFiles, Strings.Current.ItemsFolders];
+
+    public static IReadOnlyList<string> ActionOptions => [Strings.Current.ActionRename, Strings.Current.ActionMove, Strings.Current.ActionCopy];
+
+    /// <summary>0 = file, 1 = cartelle (vedi <see cref="BatchItems"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsFolders))]
+    [NotifyPropertyChangedFor(nameof(IsFiles))]
+    [NotifyPropertyChangedFor(nameof(IsRelocating))]
+    public partial int ItemsIndex { get; set; }
+
+    /// <summary>0 = rinomina, 1 = sposta, 2 = copia (vedi <see cref="BatchAction"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRelocating))]
+    public partial int ActionIndex { get; set; }
+
+    /// <summary>Vuota = la cartella aperta.</summary>
+    [ObservableProperty]
+    public partial string DestinationFolder { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string SubfolderPattern { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool NumberDuplicates { get; set; }
+
+    public bool IsFolders => ItemsIndex == (int)BatchItems.Folders;
+
+    public bool IsFiles => !IsFolders;
+
+    /// <summary>Sposta o copia (solo per i file): si mostrano destinazione e sottocartelle.</summary>
+    public bool IsRelocating => IsFiles && ActionIndex != (int)BatchAction.Rename;
+
+    /// <summary>Apre la scelta della cartella di destinazione. Lo imposta la finestra principale.</summary>
+    public Func<Task<string?>>? PickFolder { get; set; }
+
+    [RelayCommand]
+    private async Task BrowseDestinationAsync()
+    {
+        if (PickFolder is not null && await PickFolder() is { Length: > 0 } folder)
+        {
+            DestinationFolder = folder;
+        }
+    }
+
     public bool HasRules => Rules.Count > 0;
 
     /// <summary>Lingua dell'interfaccia cambiata: titoli e descrizioni delle schede.</summary>
@@ -89,6 +134,11 @@ public sealed partial class BatchRenameViewModel : ObservableObject
         Descending = Descending,
         IncludeSubfolders = IncludeSubfolders,
         Filter = Filter ?? string.Empty,
+        Items = (BatchItems)Math.Clamp(ItemsIndex, 0, 1),
+        Action = (BatchAction)Math.Clamp(ActionIndex, 0, 2),
+        DestinationFolder = DestinationFolder?.Trim() ?? string.Empty,
+        SubfolderPattern = SubfolderPattern ?? string.Empty,
+        NumberDuplicates = NumberDuplicates,
     };
 
     /// <summary>Aggiunge in fondo una regola del tipo scelto (chiave di <see cref="RuleKinds"/>).</summary>
@@ -150,6 +200,33 @@ public sealed partial class BatchRenameViewModel : ObservableObject
 
     partial void OnFilterChanged(string value) => NotifyScopeChanged();
 
+    // Una ComboBox senza voci (WinUI, mentre si crea la finestra) rimanda -1: si tiene la scelta di prima.
+    partial void OnItemsIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            ItemsIndex = oldValue;
+            return;
+        }
+        NotifyScopeChanged();
+    }
+
+    partial void OnActionIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            ActionIndex = oldValue;
+            return;
+        }
+        NotifyRulesChanged();
+    }
+
+    partial void OnDestinationFolderChanged(string value) => NotifyRulesChanged();
+
+    partial void OnSubfolderPatternChanged(string value) => NotifyRulesChanged();
+
+    partial void OnNumberDuplicatesChanged(bool value) => NotifyRulesChanged();
+
     private void NotifyScopeChanged()
     {
         if (!_loading)
@@ -167,6 +244,11 @@ public sealed partial class BatchRenameViewModel : ObservableObject
             Descending = options.Descending;
             IncludeSubfolders = options.IncludeSubfolders;
             Filter = options.Filter;
+            ItemsIndex = (int)options.Items;
+            ActionIndex = (int)options.Action;
+            DestinationFolder = options.DestinationFolder;
+            SubfolderPattern = options.SubfolderPattern;
+            NumberDuplicates = options.NumberDuplicates;
             foreach (var rule in options.Rules)
             {
                 Insert(Rules.Count, BatchRuleViewModel.Create(rule));

@@ -37,6 +37,15 @@ public sealed record RenamePlanEntry
     /// </summary>
     public string? Root { get; init; }
 
+    /// <summary>
+    /// "Rinomina file" con sposta o copia: la cartella di destinazione, che fa da recinto per <see cref="TargetPath"/>
+    /// (la sorgente resta controllata con <see cref="Root"/>). Null = stesso recinto della sorgente.
+    /// </summary>
+    public string? TargetRoot { get; init; }
+
+    /// <summary>"Rinomina file" con copia: si crea una copia in <see cref="TargetPath"/> e l'originale non si tocca.</summary>
+    public bool Copy { get; init; }
+
     /// <summary>Risultati trovati dai database (anche quelli scartati perché incerti): si scelgono dalla riga.</summary>
     public IReadOnlyList<MatchCandidate> Candidates { get; init; } = [];
 

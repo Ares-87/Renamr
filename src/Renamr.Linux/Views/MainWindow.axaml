@@ -263,9 +263,17 @@
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="12" Margin="0,0,12,12" DataContext="{Binding Batch}" x:DataType="vm:BatchRenameViewModel">
                     <TextBlock Text="{l:Tr BatchFiles}" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <TextBlock Text="{l:Tr BatchItemsLabel}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Static vm:BatchRenameViewModel.ItemOptions}"
+                                  SelectedIndex="{Binding ItemsIndex}" />
+                    </Grid>
+                    <TextBlock Text="{l:Tr ItemsFoldersNote}" Classes="caption" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" IsVisible="{Binding IsFolders}" />
                     <TextBox Text="{Binding Filter}" PlaceholderText="{l:Tr BatchFilterPlaceholder}"
-                             ToolTip.Tip="{l:Tr BatchFilterTip}" />
-                    <CheckBox Content="{l:Tr IncludeSubfolders}" IsChecked="{Binding IncludeSubfolders}" />
+                             ToolTip.Tip="{l:Tr BatchFilterTip}" IsVisible="{Binding IsFiles}" />
+                    <CheckBox Content="{l:Tr IncludeSubfolders}" IsChecked="{Binding IncludeSubfolders}" IsVisible="{Binding IsFiles}" />
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                         <TextBlock Text="{l:Tr SortOrder}" VerticalAlignment="Center" />
                         <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
@@ -274,6 +282,28 @@
                                   ToolTip.Tip="{l:Tr SortOrderTip}" />
                         <CheckBox Grid.Column="2" Content="{l:Tr SortDescending}" IsChecked="{Binding Descending}" />
                     </Grid>
+
+                    <!-- Rinomina dove sono, oppure sposta o copia in un'altra cartella (con sottocartelle da modello) -->
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" IsVisible="{Binding IsFiles}">
+                        <TextBlock Text="{l:Tr BatchActionLabel}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Static vm:BatchRenameViewModel.ActionOptions}"
+                                  SelectedIndex="{Binding ActionIndex}" />
+                    </Grid>
+                    <StackPanel Spacing="8" IsVisible="{Binding IsRelocating}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{l:Tr DestinationFolder}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBox Text="{Binding DestinationFolder}" PlaceholderText="{l:Tr DestinationPlaceholder}" />
+                                <Button Grid.Column="1" Content="{l:Tr DestinationBrowse}" Command="{Binding BrowseDestinationCommand}" />
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{l:Tr SubfolderPattern}" />
+                            <TextBox Text="{Binding SubfolderPattern}" PlaceholderText="{l:Tr SubfolderPlaceholder}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <CheckBox Content="{l:Tr NumberDuplicates}" IsChecked="{Binding NumberDuplicates}" />
 
                     <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                         <TextBlock Text="{l:Tr Rules}" Theme="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />

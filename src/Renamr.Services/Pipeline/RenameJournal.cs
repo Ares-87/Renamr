@@ -41,6 +41,33 @@ public sealed class RenameJournal(IAppPaths paths) : IDisposable
         }
     }
 
+    /// <summary>Sposta in un'altra cartella: la destinazione ha il suo recinto, <paramref name="targetRoot"/>.</summary>
+    public void RecordMove(string source, string target, string? root, string? targetRoot)
+    {
+        lock (_gate)
+        {
+            Write(new JournalEntry("move", source, target, DateTimeOffset.Now, root, targetRoot));
+        }
+    }
+
+    /// <summary>Una copia creata da noi: "Annulla" la toglie, l'originale non è mai stato toccato.</summary>
+    public void RecordCopy(string source, string target, string? root, string? targetRoot)
+    {
+        lock (_gate)
+        {
+            Write(new JournalEntry("copy", source, target, DateTimeOffset.Now, root, targetRoot));
+        }
+    }
+
+    /// <summary>Una cartella creata da noi per sposta o copia: "Annulla" la toglie se è rimasta vuota.</summary>
+    public void RecordFolder(string folder, string? root)
+    {
+        lock (_gate)
+        {
+            Write(new JournalEntry("folder", folder, null, DateTimeOffset.Now, root));
+        }
+    }
+
     public static IReadOnlyList<JournalEntry> Read(string journalFile) =>
         File.ReadLines(journalFile)
             .Where(l => l.Length > 0)
@@ -67,4 +94,4 @@ public sealed class RenameJournal(IAppPaths paths) : IDisposable
     }
 }
 
-public sealed record JournalEntry(string Kind, string Source, string? Target, DateTimeOffset At, string? Root = null);
+public sealed record JournalEntry(string Kind, string Source, string? Target, DateTimeOffset At, string? Root = null, string? TargetRoot = null);

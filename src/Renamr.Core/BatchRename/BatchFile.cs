@@ -11,11 +11,14 @@ public sealed record BatchFile(string Path, long Size, DateTime ModifiedUtc, Dat
     /// <summary>Dati letti dal contenuto (foto, musica, video); null = non ancora letti, perché nessuna regola li usa.</summary>
     public FileDetails? Details { get; init; }
 
+    /// <summary>Una cartella da rinominare: il nome intero è lo "stem", non ha estensione ("Vacanze.2024" resta intero).</summary>
+    public bool IsFolder { get; init; }
+
     /// <summary>Nome senza estensione ("Foto 01" di "Foto 01.JPG").</summary>
-    public string Stem => System.IO.Path.GetFileNameWithoutExtension(Path);
+    public string Stem => IsFolder ? Name : System.IO.Path.GetFileNameWithoutExtension(Path);
 
     /// <summary>Estensione con il punto (".JPG"), vuota se manca.</summary>
-    public string Extension => System.IO.Path.GetExtension(Path);
+    public string Extension => IsFolder ? string.Empty : System.IO.Path.GetExtension(Path);
 
     public string Folder => System.IO.Path.GetDirectoryName(Path) ?? string.Empty;
 
@@ -26,6 +29,9 @@ public sealed record BatchFile(string Path, long Size, DateTime ModifiedUtc, Dat
 /// <summary>Esito delle regole su un file: il nuovo nome, oppure il motivo per cui non è valido.</summary>
 public sealed record BatchRenameResult(BatchFile File, string NewName, string? Error)
 {
+    /// <summary>Per sposta e copia: la sottocartella (relativa alla destinazione) calcolata dal modello; vuota = nessuna.</summary>
+    public string Subfolder { get; init; } = string.Empty;
+
     public bool IsValid => Error is null;
 }
 

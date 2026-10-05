@@ -113,6 +113,7 @@ public sealed partial class FileItemViewModel : ObservableObject
             return string.Empty;
         }
         var relative = Path.GetRelativePath(baseFolder, path);
-        return relative is "." ? string.Empty : relative;
+        // Fuori dalla cartella aperta (sposta o copia in un'altra cartella): il percorso intero si legge meglio di "..\..".
+        return relative is "." ? string.Empty : relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative) ? path : relative;
     }
 }
