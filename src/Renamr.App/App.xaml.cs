@@ -65,6 +65,12 @@ public partial class App : Application
         _window = _host.Services.GetRequiredService<MainWindow>();
         _host.Services.GetRequiredService<WindowContext>().Window = _window;
         _window.Activate();
+
+        // "Renamr.exe D:\Film" apre subito la cartella, come su Linux (comodo da un collegamento o da "Apri con").
+        if (Environment.GetCommandLineArgs() is [_, var folder, ..] && Directory.Exists(folder))
+        {
+            _ = _window.ViewModel.OpenFolderCommand.ExecuteAsync(folder);
+        }
     }
 
     /// <summary>Dopo un cambio di lingua: stessa posizione e dimensione, stesso ViewModel, testi nuovi.</summary>
