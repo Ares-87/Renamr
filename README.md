@@ -71,7 +71,8 @@ rules (numbering, patterns with dates and folder names, find and replace, case, 
 
 - An ordered list of rules with a **live preview** that updates as you type.
 - Numbering, new name from a pattern (`{folder} - {date:yyyy-MM-dd} - {n:000}`), find and replace (with regular
-  expressions), add text, remove characters, upper/lower case, clean name and extension rules.
+  expressions), multiple replacements, add text, remove characters, move text, swap parts, renumber, trim, names from a
+  list, upper/lower case, clean name, letters to numbers and extension rules.
 - File filter, optional subfolders and natural sort by name, date, size or extension.
 - Chains and swaps (`1 → 2`, `2 → 3`, `A ↔ B`) are handled for you.
 
@@ -231,11 +232,18 @@ switched off, moved up or down, or removed, and the preview updates as you type.
 |---|---|
 | Numbering | Adds a sequential number at the start, at the end or instead of the name; start, step, digits, separator, restart in each folder |
 | New name from pattern | Builds the whole name from placeholders |
-| Replace text | Find and replace, optionally with regular expressions and `$1` groups |
-| Add text | Inserts text at the start, at the end or after N characters |
-| Remove characters | Removes the first or last N characters, or N characters from a position |
-| Upper and lower case | UPPER, lower, Title Case, Sentence case |
+| Replace text | Find and replace every time, or only the first or last time, optionally with regular expressions and `$1` groups |
+| Multiple replacements | A list of find and replace pairs applied from top to bottom |
+| Add text | Inserts text at the start, at the end, after N characters, before the last N characters, or before or after a given text |
+| Remove characters | Removes the first or last N characters, N characters from a position, a list of characters, symbols, digits, letters, everything but digits, or uppercase or lowercase letters |
+| Move text | Moves a text (or N characters from a position) to the start, the end or after N characters |
+| Swap parts | Swaps the parts around a separator: `Artist - Title` becomes `Title - Artist` |
+| Renumber | Changes a number already in the name: a new sequence, or plus or minus a value, keeping its digits |
+| Trim | Removes the chosen characters from the start and/or end |
+| Names from a list | One name per line in file order; a button fills it with the current names to edit by hand |
+| Upper and lower case | UPPER, lower, Title Case, Sentence case, iNVERTED |
 | Clean name | Turns dots and underscores into spaces; optionally removes bracketed text, accents and digits |
+| Letters to numbers | Replaces letters with look-alike digits (`Bone Lake` becomes `B0n3 L4k3`) |
 | Extension | Changes only the extension (lowercase, uppercase or a new one); the content is not converted |
 
 Pattern placeholders: `{name}` current name, `{original}` starting name, `{n}` / `{n:000}` sequential number, `{folder}`

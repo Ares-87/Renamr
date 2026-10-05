@@ -114,13 +114,19 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        box.SelectedIndex = box.DataContext switch
+        // Le schede con due ComboBox distinguono la seconda con Tag.
+        box.SelectedIndex = (box.DataContext, box.Tag as string) switch
         {
-            NumberingRuleViewModel numbering => numbering.PositionIndex,
-            InsertTextRuleViewModel insert => insert.PositionIndex,
-            RemoveCharactersRuleViewModel remove => remove.ModeIndex,
-            ChangeCaseRuleViewModel changeCase => changeCase.ModeIndex,
-            ExtensionRuleViewModel extension => extension.ModeIndex,
+            (NumberingRuleViewModel numbering, _) => numbering.PositionIndex,
+            (ReplaceTextRuleViewModel replace, _) => replace.OccurrenceIndex,
+            (InsertTextRuleViewModel insert, _) => insert.PositionIndex,
+            (RemoveCharactersRuleViewModel remove, _) => remove.ModeIndex,
+            (ChangeCaseRuleViewModel changeCase, _) => changeCase.ModeIndex,
+            (ExtensionRuleViewModel extension, _) => extension.ModeIndex,
+            (MoveTextRuleViewModel move, "Target") => move.TargetIndex,
+            (MoveTextRuleViewModel move, _) => move.SourceIndex,
+            (RenumberRuleViewModel renumber, _) => renumber.ModeIndex,
+            (TrimRuleViewModel trim, _) => trim.WhereIndex,
             _ => -1,
         };
     }

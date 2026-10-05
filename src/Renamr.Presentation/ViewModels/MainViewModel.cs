@@ -65,6 +65,11 @@ public sealed partial class MainViewModel : ObservableObject
         Batch = new BatchRenameViewModel(batchState.Options);
         Batch.RulesChanged += (_, _) => ScheduleBatchRefresh(rescan: false);
         Batch.ScopeChanged += (_, _) => ScheduleBatchRefresh(rescan: true);
+        Batch.CurrentNames = () =>
+        {
+            var options = Batch.ToOptions();
+            return [.. BatchRenameEngine.Sort(_batchFiles, options.SortBy, options.Descending).Select(f => f.Stem)];
+        };
         _syncingFromSettings = true;
         IsBatchMode = batchState.BatchModeActive;
         _syncingFromSettings = false;
