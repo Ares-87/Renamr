@@ -14,6 +14,7 @@ public sealed partial class RuleTemplateSelector : DataTemplateSelector
     public DataTemplate? RemoveCharacters { get; set; }
     public DataTemplate? ChangeCase { get; set; }
     public DataTemplate? Cleanup { get; set; }
+    public DataTemplate? LettersToDigits { get; set; }
     public DataTemplate? Extension { get; set; }
 
     protected override DataTemplate? SelectTemplateCore(object item) => item switch
@@ -25,6 +26,7 @@ public sealed partial class RuleTemplateSelector : DataTemplateSelector
         RemoveCharactersRuleViewModel => RemoveCharacters,
         ChangeCaseRuleViewModel => ChangeCase,
         CleanupRuleViewModel => Cleanup,
+        LettersToDigitsRuleViewModel => LettersToDigits,
         ExtensionRuleViewModel => Extension,
         _ => null,
     };

@@ -175,6 +175,34 @@
                 </Border>
             </DataTemplate>
 
+            <DataTemplate x:Key="LettersToDigitsRuleTemplate" x:DataType="vm:LettersToDigitsRuleViewModel">
+                <Border Style="{StaticResource RuleCardStyle}">
+                    <StackPanel Spacing="4">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <CheckBox Grid.Row="0" Grid.Column="0" MinWidth="0" Content="A ➔ 4" IsChecked="{x:Bind A, Mode=TwoWay}" />
+                            <CheckBox Grid.Row="0" Grid.Column="1" MinWidth="0" Content="E ➔ 3" IsChecked="{x:Bind E, Mode=TwoWay}" />
+                            <CheckBox Grid.Row="0" Grid.Column="2" MinWidth="0" Content="I ➔ 1" IsChecked="{x:Bind I, Mode=TwoWay}" />
+                            <CheckBox Grid.Row="0" Grid.Column="3" MinWidth="0" Content="O ➔ 0" IsChecked="{x:Bind O, Mode=TwoWay}" />
+                            <CheckBox Grid.Row="1" Grid.Column="0" MinWidth="0" Content="S ➔ 5" IsChecked="{x:Bind S, Mode=TwoWay}" />
+                            <CheckBox Grid.Row="1" Grid.Column="1" MinWidth="0" Content="T ➔ 7" IsChecked="{x:Bind T, Mode=TwoWay}" />
+                            <CheckBox Grid.Row="1" Grid.Column="2" MinWidth="0" Content="B ➔ 8" IsChecked="{x:Bind B, Mode=TwoWay}" />
+                            <CheckBox Grid.Row="1" Grid.Column="3" MinWidth="0" Content="G ➔ 6" IsChecked="{x:Bind G, Mode=TwoWay}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
             <DataTemplate x:Key="ExtensionRuleTemplate" x:DataType="vm:ExtensionRuleViewModel">
                 <Border Style="{StaticResource RuleCardStyle}">
                     <StackPanel Spacing="8">
@@ -196,6 +224,7 @@
                                      RemoveCharacters="{StaticResource RemoveCharactersRuleTemplate}"
                                      ChangeCase="{StaticResource ChangeCaseRuleTemplate}"
                                      Cleanup="{StaticResource CleanupRuleTemplate}"
+                                     LettersToDigits="{StaticResource LettersToDigitsRuleTemplate}"
                                      Extension="{StaticResource ExtensionRuleTemplate}" />
         </Grid.Resources>
 

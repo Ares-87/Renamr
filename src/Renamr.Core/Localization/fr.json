@@ -64,6 +64,8 @@
   "RuleCaseDesc": "Change les majuscules et minuscules du nom (pas de l'extension).",
   "RuleCleanup": "Nettoyer le nom",
   "RuleCleanupDesc": "Retire séparateurs, parenthèses, accents et doubles espaces.",
+  "RuleLettersToDigits": "Lettres en chiffres",
+  "RuleLettersToDigitsDesc": "Remplace les lettres par les chiffres qui leur ressemblent : « Bone Lake » ➔ « B0n3 L4k3 ».",
   "RuleExtension": "Extension",
   "RuleExtensionDesc": "Change seulement l'extension dans le nom : le contenu du fichier n'est pas converti.",
 
@@ -176,6 +178,7 @@
   "ProviderKeyRejected": "{0} a refusé la clé API : ses résultats ont été remplacés par d'autres sources.",
   "ProviderFailed": "{0} : {1}, ses résultats ont été remplacés par d'autres sources.",
   "ProviderNotConfigured": "{0} : non configuré",
+  "DecodedTitleSearch": "Titre décodé : « {0} »",
 
   "Save": "Enregistrer",
   "SettingsNameFormats": "Format des noms",

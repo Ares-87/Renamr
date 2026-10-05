@@ -26,6 +26,54 @@ public sealed class CascadingMetadataResolver(
 
     public async Task<MatchResult> ResolveAsync(MediaQuery query, CancellationToken cancellationToken)
     {
+        var result = await ResolveOnceAsync(query, cancellationToken).ConfigureAwait(false);
+
+        // Titolo offuscato ("B0N3.L4K3" = "Bone Lake"): se l'originale non dà un risultato sicuro,
+        // si cerca anche la versione decodificata e vince il punteggio migliore.
+        foreach (var decoded in DecodedQueries(query))
+        {
+            if (result.Outcome is MatchOutcome.Matched or MatchOutcome.ProviderFailure)
+            {
+                break;
+            }
+            var attempt = await ResolveOnceAsync(decoded, cancellationToken).ConfigureAwait(false);
+            result = Merge(result, attempt, Strings.Current.Format(nameof(Strings.DecodedTitleSearch), decoded.Title));
+        }
+        return result;
+    }
+
+    /// <summary>Le ricerche con il titolo (e l'artista) decodificati; vuoto se nulla sembra offuscato.</summary>
+    private static IEnumerable<MediaQuery> DecodedQueries(MediaQuery query)
+    {
+        var artist = query.Artist is null ? null : Core.Parsing.LeetSpeak.Decode(query.Artist);
+        var titles = Core.Parsing.LeetSpeak.Alternatives(query.Title);
+        if (titles.Count == 0 && !string.Equals(artist, query.Artist, StringComparison.Ordinal))
+        {
+            titles = [query.Title]; // solo l'artista è offuscato
+        }
+        return titles.Select(t => query with { Title = t, Artist = artist });
+    }
+
+    private MatchResult Merge(MatchResult previous, MatchResult attempt, string label)
+    {
+        var trace = new List<string>(previous.Trace) { label };
+        trace.AddRange(attempt.Trace);
+        var winner = (attempt.Best?.Confidence ?? -1) > (previous.Best?.Confidence ?? -1) ? attempt : previous;
+        List<MatchCandidate> all = [.. new[] { previous.Best, attempt.Best }.OfType<MatchCandidate>(), .. previous.Alternatives, .. attempt.Alternatives];
+        var outcome = winner.Best is not null ? winner.Outcome
+            : previous.Outcome == MatchOutcome.NoMatch || attempt.Outcome == MatchOutcome.NoMatch ? MatchOutcome.NoMatch
+            : MatchOutcome.ProviderFailure;
+        return new MatchResult
+        {
+            Outcome = outcome,
+            Best = winner.Best,
+            Alternatives = [.. Distinct(all).Where(a => winner.Best is null || Key(a) != Key(winner.Best)).Take(MaxCandidates)],
+            Trace = trace,
+        };
+    }
+
+    private async Task<MatchResult> ResolveOnceAsync(MediaQuery query, CancellationToken cancellationToken)
+    {
         var matching = settings.Current.Matching;
         var trace = new List<string>();
         MatchCandidate? best = null;
@@ -133,7 +181,10 @@ public sealed class CascadingMetadataResolver(
     private static IEnumerable<MatchCandidate> Distinct(IEnumerable<MatchCandidate> candidates) =>
         candidates
             .OrderByDescending(c => c.Confidence)
-            .DistinctBy(c => (c.Metadata.Provider, c.Metadata.ProviderId, c.Metadata.Season, c.Metadata.Episode));
+            .DistinctBy(Key);
+
+    private static (string, string, int?, int?) Key(MatchCandidate c) =>
+        (c.Metadata.Provider, c.Metadata.ProviderId, c.Metadata.Season, c.Metadata.Episode);
 
     private IEnumerable<IMetadataProvider> ProvidersFor(MediaKind kind)
     {

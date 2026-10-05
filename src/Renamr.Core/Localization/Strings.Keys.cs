@@ -64,6 +64,8 @@ public sealed partial class Strings
     public string RuleCaseDesc => Get();
     public string RuleCleanup => Get();
     public string RuleCleanupDesc => Get();
+    public string RuleLettersToDigits => Get();
+    public string RuleLettersToDigitsDesc => Get();
     public string RuleExtension => Get();
     public string RuleExtensionDesc => Get();
     public string NumberingFrom => Get();
@@ -169,6 +171,7 @@ public sealed partial class Strings
     public string ProviderKeyRejected => Get();
     public string ProviderFailed => Get();
     public string ProviderNotConfigured => Get();
+    public string DecodedTitleSearch => Get();
     public string Save => Get();
     public string SettingsNameFormats => Get();
     public string SettingsPlaceholders => Get();

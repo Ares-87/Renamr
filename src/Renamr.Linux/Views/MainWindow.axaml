@@ -388,6 +388,23 @@
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
+                            <DataTemplate DataType="vm:LettersToDigitsRuleViewModel">
+                                <Border Classes="ruleCard">
+                                    <StackPanel Spacing="4">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" />
+                                        <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto">
+                                            <CheckBox Grid.Row="0" Grid.Column="0" Content="A ➔ 4" IsChecked="{Binding A}" />
+                                            <CheckBox Grid.Row="0" Grid.Column="1" Content="E ➔ 3" IsChecked="{Binding E}" />
+                                            <CheckBox Grid.Row="0" Grid.Column="2" Content="I ➔ 1" IsChecked="{Binding I}" />
+                                            <CheckBox Grid.Row="0" Grid.Column="3" Content="O ➔ 0" IsChecked="{Binding O}" />
+                                            <CheckBox Grid.Row="1" Grid.Column="0" Content="S ➔ 5" IsChecked="{Binding S}" />
+                                            <CheckBox Grid.Row="1" Grid.Column="1" Content="T ➔ 7" IsChecked="{Binding T}" />
+                                            <CheckBox Grid.Row="1" Grid.Column="2" Content="B ➔ 8" IsChecked="{Binding B}" />
+                                            <CheckBox Grid.Row="1" Grid.Column="3" Content="G ➔ 6" IsChecked="{Binding G}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
                             <DataTemplate DataType="vm:ExtensionRuleViewModel">
                                 <Border Classes="ruleCard">
                                     <StackPanel Spacing="8">
