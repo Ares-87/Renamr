@@ -114,4 +114,4 @@ Save-Window 'windows-start' @() 8
 Save-Window 'windows-media-preview' @("`"$film`"") 20
 Copy-Item "$here/batch-rename.json" (Join-Path $data 'batch-rename.json')
 Save-Window 'windows-rename-files' @("`"$photos`"") 12
-Write-Host "Screenshots saved in $OutDir"
+Get-ChildItem $OutDir -Filter "windows-*.png" | Format-Table Name, Length

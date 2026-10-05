@@ -103,6 +103,28 @@ public sealed partial class MainWindow : Window
 
     private void Root_DragLeave(object sender, DragEventArgs e) => SetDropHighlight(false);
 
+    /// <summary>
+    /// Nei DataTemplate delle regole x:Bind imposta SelectedIndex prima che la ComboBox abbia le voci, e la scelta
+    /// restava vuota: quando le voci ci sono si riprende l'indice dal modello.
+    /// </summary>
+    private void RuleChoice_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ComboBox { SelectedIndex: < 0 } box)
+        {
+            return;
+        }
+
+        box.SelectedIndex = box.DataContext switch
+        {
+            NumberingRuleViewModel numbering => numbering.PositionIndex,
+            InsertTextRuleViewModel insert => insert.PositionIndex,
+            RemoveCharactersRuleViewModel remove => remove.ModeIndex,
+            ChangeCaseRuleViewModel changeCase => changeCase.ModeIndex,
+            ExtensionRuleViewModel extension => extension.ModeIndex,
+            _ => -1,
+        };
+    }
+
     private async void Root_Drop(object sender, DragEventArgs e)
     {
         SetDropHighlight(false);

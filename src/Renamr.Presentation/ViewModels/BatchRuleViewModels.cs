@@ -135,12 +135,17 @@ public sealed partial class NumberingRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Positions => [Strings.Current.PositionStart, Strings.Current.PositionEnd, Strings.Current.PositionReplaceName];
 
-    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
-    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
-    public IReadOnlyList<string> PositionNames => Positions;
-
     [ObservableProperty]
     public partial int PositionIndex { get; set; } = (int)NumberPosition.End;
+
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnPositionIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            PositionIndex = oldValue;
+        }
+    }
 
     [ObservableProperty]
     public partial double Start { get; set; } = 1;
@@ -214,16 +219,21 @@ public sealed partial class InsertTextRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Positions => [Strings.Current.PositionStart, Strings.Current.PositionEnd, Strings.Current.PositionAfterChars];
 
-    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
-    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
-    public IReadOnlyList<string> PositionNames => Positions;
-
     [ObservableProperty]
     public partial string Text { get; set; } = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAtIndex))]
     public partial int PositionIndex { get; set; }
+
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnPositionIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            PositionIndex = oldValue;
+        }
+    }
 
     [ObservableProperty]
     public partial double Index { get; set; }
@@ -247,13 +257,18 @@ public sealed partial class RemoveCharactersRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Modes => [Strings.Current.RemoveFirst, Strings.Current.RemoveLast, Strings.Current.RemoveRange];
 
-    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
-    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
-    public IReadOnlyList<string> ModeNames => Modes;
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRange))]
     public partial int ModeIndex { get; set; }
+
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnModeIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            ModeIndex = oldValue;
+        }
+    }
 
     [ObservableProperty]
     public partial double Count { get; set; } = 1;
@@ -280,12 +295,17 @@ public sealed partial class ChangeCaseRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Modes => [Strings.Current.CaseLower, Strings.Current.CaseUpper, Strings.Current.CaseTitle, Strings.Current.CaseSentence];
 
-    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
-    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
-    public IReadOnlyList<string> ModeNames => Modes;
-
     [ObservableProperty]
     public partial int ModeIndex { get; set; } = (int)CaseMode.TitleCase;
+
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnModeIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            ModeIndex = oldValue;
+        }
+    }
 
     public override string Title => Strings.Current.RuleCase;
 
@@ -360,13 +380,18 @@ public sealed partial class ExtensionRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Modes => [Strings.Current.ExtensionLower, Strings.Current.ExtensionUpper, Strings.Current.ExtensionReplace];
 
-    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
-    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
-    public IReadOnlyList<string> ModeNames => Modes;
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReplace))]
     public partial int ModeIndex { get; set; }
+
+    // Una ComboBox senza voci (WinUI, mentre si crea il modello) rimanda -1: si tiene la scelta di prima.
+    partial void OnModeIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+        {
+            ModeIndex = oldValue;
+        }
+    }
 
     [ObservableProperty]
     public partial string NewExtension { get; set; } = string.Empty;
