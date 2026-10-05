@@ -164,6 +164,9 @@ public sealed partial class NewNameRuleViewModel : BatchRuleViewModel
 
     public static string TokensHelp => string.Join(Environment.NewLine, BatchTokens.Help.Select(t => $"{t.Token}  {t.Description}"));
 
+    /// <summary>Parti del nome, dimensione e dati letti da foto, musica e video: in un riquadro che si apre a richiesta.</summary>
+    public static string MoreTokensHelp => string.Join(Environment.NewLine, BatchTokens.MoreHelp.Select(t => $"{t.Token}  {t.Description}"));
+
     public override BatchRule ToRule() => new NewNameRule { Enabled = Enabled, Pattern = Pattern ?? string.Empty };
 }
 

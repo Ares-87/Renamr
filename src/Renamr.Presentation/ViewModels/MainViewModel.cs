@@ -532,7 +532,8 @@ public sealed partial class MainViewModel : ObservableObject
                     var files = (root is null ? [] : batchPlanner.Scan(root, options)).Where(f => !removed.Contains(f.Path)).ToList();
                     var known = new HashSet<string>(files.Select(f => f.Path), PathComparer);
                     files.AddRange(added.Where(a => known.Add(a.Path)).Select(a => BatchRenamePlanner.Describe(a.Path, a.Root)).OfType<BatchFile>());
-                    return ((IReadOnlyList<BatchFile>)files, batchPlanner.Plan(root, files, options));
+                    var withDetails = BatchRenamePlanner.WithDetails(files, options);
+                    return (withDetails, batchPlanner.Plan(root, withDetails, options));
                 }, ct);
             }
             else
@@ -1055,7 +1056,14 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        _plan = _services.GetRequiredService<BatchRenamePlanner>().Plan(RootFolder, _batchFiles, Batch.ToOptions());
+        var options = Batch.ToOptions();
+        if (BatchTokens.NeedsDetails(options.Rules) && _batchFiles.Any(f => f.Details is null))
+        {
+            // Una regola ora usa {scatto}, {artista}…: si legge il contenuto dei file, una volta sola.
+            var files = _batchFiles;
+            _batchFiles = await Task.Run(() => BatchRenamePlanner.WithDetails(files, options));
+        }
+        _plan = _services.GetRequiredService<BatchRenamePlanner>().Plan(RootFolder, _batchFiles, options);
         _messenger.Send(new RunStartedMessage("Regole"));
         var sameRows = Items.Count == _plan.Count && Items.Select(i => i.Entry.SourcePath).SequenceEqual(_plan.Select(e => e.SourcePath), StringComparer.Ordinal);
         if (!sameRows)

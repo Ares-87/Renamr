@@ -319,6 +319,10 @@
                                         <TextBox Text="{Binding Pattern}" PlaceholderText="{l:Tr NewNamePlaceholder}" />
                                         <TextBlock Text="{x:Static vm:NewNameRuleViewModel.TokensHelp}" Classes="caption" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        <Expander Header="{l:Tr MoreTokens}" HorizontalAlignment="Stretch">
+                                            <TextBlock Text="{x:Static vm:NewNameRuleViewModel.MoreTokensHelp}" Classes="caption" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        </Expander>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>

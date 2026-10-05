@@ -248,7 +248,11 @@ switched off, moved up or down, or removed, and the preview updates as you type.
 
 Pattern placeholders: `{name}` current name, `{original}` starting name, `{n}` / `{n:000}` sequential number, `{folder}`
 folder of the file, `{date}` / `{date:dd-MM-yyyy}` date modified, `{time}` time modified, `{created}` date created, `{ext}`
-original extension. The Italian names (`{nome}`, `{cartella}`, `{data}`…) work as well.
+original extension, `{word:2}` second word of the name (`-1` = last), `{part:1:4}` four characters from the first,
+`{folder:2}` the folder above, `{size}` file size, `{random}` four random digits that stay the same for each file.
+Read from the files (never written): `{taken}` date a photo was taken and `{camera}` (EXIF), `{resolution}` (also
+`{width}`, `{height}`), `{duration}`, and the music tags `{artist}`, `{album}`, `{title}`, `{track}`, `{year}`; a file
+without that data leaves the placeholder empty. The Italian names (`{nome}`, `{cartella}`, `{data}`, `{scatto}`…) work as well.
 
 This mode only renames: it never searches online and never changes metadata or dates. Rules, filter, order and the last
 mode used are remembered.
