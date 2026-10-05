@@ -1,9 +1,12 @@
 namespace Renamr.Presentation.Services;
 
-/// <summary>Selettore cartella nativo (implementato nella View, serve l'handle della finestra).</summary>
+/// <summary>Selettori di cartella e di file nativi (implementati nella View, serve l'handle della finestra).</summary>
 public interface IFolderPickerService
 {
     Task<string?> PickFolderAsync();
+
+    /// <summary>Uno o più file. <paramref name="extensions"/> (".mkv", ".mp3"…) limita la scelta; null = qualunque file.</summary>
+    Task<IReadOnlyList<string>> PickFilesAsync(IReadOnlyCollection<string>? extensions) => Task.FromResult<IReadOnlyList<string>>([]);
 }
 
 /// <summary>Apertura di Esplora File sul file indicato (comodo dal pannello errori) e dei link nel browser.</summary>

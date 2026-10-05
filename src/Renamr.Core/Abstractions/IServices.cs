@@ -11,6 +11,16 @@ public interface IFileNameParser
 public interface IMetadataResolver
 {
     Task<MatchResult> ResolveAsync(MediaQuery query, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Ricerca scelta dall'utente: interroga tutti i database adatti, senza fermarsi al primo risultato sicuro,
+    /// e restituisce tutti i candidati in <see cref="MatchResult.Alternatives"/> dal più probabile.
+    /// </summary>
+    async Task<MatchResult> SearchAllAsync(MediaQuery query, CancellationToken cancellationToken)
+    {
+        var result = await ResolveAsync(query, cancellationToken).ConfigureAwait(false);
+        return result with { Alternatives = result.Best is { } best ? [best, .. result.Alternatives] : result.Alternatives };
+    }
 }
 
 public interface INameTemplateEngine

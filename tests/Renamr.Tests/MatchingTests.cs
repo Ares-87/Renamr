@@ -75,6 +75,32 @@ public class MatchingTests
         Assert.Equal(MatchOutcome.ProviderFailure, result.Outcome);
     }
 
+    [Fact]
+    public async Task No_match_keeps_the_approximate_results_for_the_manual_choice()
+    {
+        var a = new FakeProvider("A", 1, q => [Candidate("A", "Altro", 0.30)]);
+        var resolver = new CascadingMetadataResolver([a], new InMemorySettingsStore());
+        var result = await resolver.ResolveAsync(Query("X"), CancellationToken.None);
+        Assert.Equal(MatchOutcome.NoMatch, result.Outcome);
+        Assert.Null(result.Best);
+        Assert.Equal("Altro", Assert.Single(result.Alternatives).Metadata.Title);
+    }
+
+    [Fact]
+    public async Task Search_all_asks_every_provider_and_sorts_the_results()
+    {
+        var first = new FakeProvider("A", 1, q => [Candidate("A", q.Title, 0.9)]);
+        var failing = new FakeProvider("B", 2, _ => throw new ProviderException("B", RenamrErrorCode.ProviderUnavailable, "down"));
+        var second = new FakeProvider("C", 3, q => [Candidate("C", q.Title, 0.99), Candidate("C", q.Title, 0.99)]);
+        var resolver = new CascadingMetadataResolver([first, failing, second], new InMemorySettingsStore());
+
+        var result = await resolver.SearchAllAsync(Query("Matrix"), CancellationToken.None);
+
+        Assert.True(second.Called); // nessuno stop al primo risultato sicuro
+        Assert.Equal(["C", "A"], result.Alternatives.Select(c => c.Metadata.Provider)); // doppioni tolti, dal più probabile
+        Assert.Contains(result.Trace, t => t.StartsWith("B:"));
+    }
+
     private static MediaQuery Query(string title) => new() { Kind = MediaKind.Movie, Title = title };
 
     private static MatchCandidate Candidate(string provider, string title, double confidence) =>

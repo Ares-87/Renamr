@@ -22,13 +22,13 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
     private readonly ILogger _log = logger ?? NullLogger<BatchRenameExecutor>.Instance;
 
     public async Task<IReadOnlyList<RenamePlanEntry>> ExecuteAsync(
-        string rootFolder,
+        string? rootFolder,
         IReadOnlyList<RenamePlanEntry> plan,
         bool dryRun,
         IProgress<RenameProgress>? progress,
         CancellationToken ct)
     {
-        var boundary = new PathBoundary(rootFolder);
+        var boundaries = new BoundaryCache(rootFolder);
         var results = plan.ToArray();
         var todo = Enumerable.Range(0, results.Length).Where(i => results[i] is { Status: PlanStatus.Ready, NameOnly: true, TargetPath: not null }).ToList();
         var phase = dryRun ? Strings.Current.PhaseDryRun : Strings.Current.PhaseRename;
@@ -46,7 +46,9 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
         var movingSources = todo.Select(i => results[i].SourcePath).ToHashSet(PathComparer);
         foreach (var i in todo)
         {
-            var checkedEntry = Check(boundary, results[i], movingSources);
+            var checkedEntry = boundaries.For(results[i]) is { } boundary
+                ? Check(boundary, results[i], movingSources)
+                : Failed(results[i], RenamrError.From(RenamrErrorCode.PathOutsideRoot, results[i].SourcePath));
             if (checkedEntry.Status == PlanStatus.Error)
             {
                 movingSources.Remove(results[i].SourcePath);
@@ -67,7 +69,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
             return results;
         }
 
-        journal.BeginSession(boundary.Root);
+        journal.BeginSession(rootFolder ?? results[pending[0]].Root ?? string.Empty);
 
         // 2) Chi ha la destinazione libera va subito; ogni rinomina può liberare la destinazione di un altro.
         bool progressMade;
@@ -107,7 +109,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
             var moved = await io.MoveAsync(entry.SourcePath, temp, CancellationToken.None).ConfigureAwait(false);
             if (moved.Succeeded)
             {
-                journal.RecordMove(entry.SourcePath, temp);
+                journal.RecordMove(entry.SourcePath, temp, RootOf(entry));
                 parked.Add((i, temp));
             }
             else
@@ -125,7 +127,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
                 var back = await io.MoveAsync(temp, entry.SourcePath, CancellationToken.None).ConfigureAwait(false);
                 if (back.Succeeded)
                 {
-                    journal.RecordMove(temp, entry.SourcePath);
+                    journal.RecordMove(temp, entry.SourcePath, RootOf(entry));
                 }
                 else
                 {
@@ -142,6 +144,8 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
             Finish(i, results[i] with { Status = PlanStatus.Skipped, Error = RenamrError.From(RenamrErrorCode.Cancelled) });
         }
         return results;
+
+        string? RootOf(RenamePlanEntry entry) => entry.Root ?? rootFolder;
 
         bool IsOccupied(string source, string target) =>
             !PathComparer.Equals(source, target) && (File.Exists(target) || Directory.Exists(target));
@@ -185,7 +189,7 @@ public sealed class BatchRenameExecutor(SafeFileOperations io, RenameJournal jou
             {
                 return Failed(entry, moved.Error!);
             }
-            journal.RecordMove(from, to);
+            journal.RecordMove(from, to, entry.Root);
             return entry with { Status = PlanStatus.Done, Error = null };
         }
         catch (OperationCanceledException)

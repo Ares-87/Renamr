@@ -9,13 +9,14 @@ namespace Renamr.Presentation.ViewModels;
 /// <summary>Una riga della Diff View.</summary>
 public sealed partial class FileItemViewModel : ObservableObject
 {
-    public FileItemViewModel(RenamePlanEntry entry, string rootFolder)
+    public FileItemViewModel(RenamePlanEntry entry, string? rootFolder)
     {
         RootFolder = rootFolder;
         Apply(entry);
     }
 
-    public string RootFolder { get; }
+    /// <summary>Cartella aperta; null se l'elenco ha solo file aggiunti a mano.</summary>
+    public string? RootFolder { get; }
 
     public RenamePlanEntry Entry { get; private set; } = null!;
 
@@ -30,7 +31,7 @@ public sealed partial class FileItemViewModel : ObservableObject
     public partial string RelativeFolder { get; private set; } = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StatusText), nameof(IsActionable))]
+    [NotifyPropertyChangedFor(nameof(StatusText), nameof(IsActionable), nameof(CanChooseMatch), nameof(SuggestsChoice))]
     public partial PlanStatus Status { get; private set; }
 
     [ObservableProperty]
@@ -41,6 +42,12 @@ public sealed partial class FileItemViewModel : ObservableObject
     public partial string? MatchSummary { get; private set; }
 
     public bool IsActionable => Entry.IsActionable;
+
+    /// <summary>Film, serie e musica: cliccando la riga si sceglie tra i risultati o si cerca un altro titolo.</summary>
+    public bool CanChooseMatch => !Entry.NameOnly && Status is PlanStatus.Ready or PlanStatus.LowConfidence or PlanStatus.Unchanged or PlanStatus.Error;
+
+    /// <summary>Righe incerte o senza risultato: il link "Scegli…" sotto lo stato invita a farlo.</summary>
+    public bool SuggestsChoice => CanChooseMatch && (Status == PlanStatus.LowConfidence || (Status == PlanStatus.Error && Entry.Metadata is null));
 
     /// <summary>Quale formato usa questa riga (per il menu contestuale "Formato nome").</summary>
     public MediaKind? TemplateKind => (Entry.Metadata?.Kind ?? Entry.Parsed?.Kind) is { } kind and not MediaKind.Unknown
@@ -61,13 +68,18 @@ public sealed partial class FileItemViewModel : ObservableObject
     };
 
     /// <summary>Lingua dell'interfaccia cambiata.</summary>
-    public void RefreshTexts() => OnPropertyChanged(nameof(StatusText));
+    public void RefreshTexts()
+    {
+        OnPropertyChanged(nameof(StatusText));
+        Apply(Entry); // "scelto da te" e le date seguono la nuova lingua
+    }
 
     public void Apply(RenamePlanEntry entry)
     {
         Entry = entry;
         OriginalName = entry.SourceName;
-        RelativeFolder = Relative(Path.GetDirectoryName(entry.SourcePath));
+        // Un file aggiunto da un'altra cartella mostra la sua cartella per intero.
+        RelativeFolder = IsOutsideRoot ? Path.GetDirectoryName(entry.SourcePath) ?? string.Empty : Relative(Path.GetDirectoryName(entry.SourcePath));
         ProposedName = entry.TargetPath is null
             ? "—"
             : string.Equals(Path.GetDirectoryName(entry.TargetPath), Path.GetDirectoryName(entry.SourcePath), StringComparison.OrdinalIgnoreCase)
@@ -80,14 +92,27 @@ public sealed partial class FileItemViewModel : ObservableObject
             {
                 md.Provider,
                 md.ReleaseDate?.ToString("d", CultureInfo.CurrentCulture) ?? md.Year?.ToString(CultureInfo.CurrentCulture),
-                entry.Confidence > 0 ? entry.Confidence.ToString("P0", CultureInfo.CurrentCulture) : null,
+                entry.ManualMatch ? Strings.Current.MatchManual
+                    : entry.Confidence > 0 ? entry.Confidence.ToString("P0", CultureInfo.CurrentCulture) : null,
             }.Where(s => !string.IsNullOrEmpty(s)))
             : null;
         OnPropertyChanged(nameof(IsActionable));
+        OnPropertyChanged(nameof(CanChooseMatch));
+        OnPropertyChanged(nameof(SuggestsChoice));
         OnPropertyChanged(nameof(TemplateKind));
         OnPropertyChanged(nameof(StatusText));
     }
 
-    private string Relative(string? path) =>
-        path is null ? string.Empty : Path.GetRelativePath(RootFolder, path) is "." ? string.Empty : Path.GetRelativePath(RootFolder, path);
+    private bool IsOutsideRoot => Entry.Root is { } own && !string.Equals(own, RootFolder, StringComparison.Ordinal);
+
+    private string Relative(string? path)
+    {
+        var baseFolder = Entry.Root ?? RootFolder;
+        if (path is null || baseFolder is null)
+        {
+            return string.Empty;
+        }
+        var relative = Path.GetRelativePath(baseFolder, path);
+        return relative is "." ? string.Empty : relative;
+    }
 }

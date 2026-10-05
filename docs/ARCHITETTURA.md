@@ -221,3 +221,21 @@ In alto nella finestra un selettore sceglie tra **Film e serie** (tutto quanto d
   temporanea, per questo `fpcalc.exe` si cerca anche accanto all'eseguibile vero) e `Renamr-X.Y.Z-linux-x64.AppImage`/
   `-linux-arm64.AppImage` (`build/linux/make-appimage.sh`). La CI avvia l'exe x64 (`build/windows/smoke-test.ps1`) e
   l'AppImage x64 e fallisce se non si apre la finestra.
+
+## 16. Elenco dei file e scelta manuale (v1.13.0)
+
+- **File singoli.** Oltre alla cartella si possono scegliere o trascinare file singoli, anche da cartelle diverse
+  (`AddFilesCommand`). Ogni riga ha la sua cartella-recinto (`RenamePlanEntry.Root`, `PlanSource`): la cartella aperta se il
+  file ci sta dentro, altrimenti la cartella del file. Il `PathBoundary` resta stretto per ogni file e il journal registra
+  il recinto di ogni spostamento, così "Annulla" ricontrolla anche i file di altre cartelle. Con un'anteprima già pronta
+  si analizzano solo i file nuovi.
+- **Togli dall'elenco.** La X a destra della riga (o il menu contestuale) esclude il file; resta fuori anche rifacendo l'analisi
+  finché non si apre un'altra cartella o si torna alla schermata iniziale. In "Rinomina file" la numerazione si ricalcola.
+- **Scelta della corrispondenza.** Il planner conserva in `RenamePlanEntry.Candidates` tutti i risultati dei database, anche
+  quelli scartati perché sotto la soglia minima. Cliccando una riga di film, serie o musica (o "Scegli…" sotto lo stato delle
+  righe incerte o senza risultato) si apre `MatchPickerViewModel`: risultati già trovati più una ricerca libera (titolo, anno,
+  tipo, stagione/episodio) che con `IMetadataResolver.SearchAllAsync` interroga tutti i database adatti senza fermarsi al
+  primo. La scelta (`RenamePlanner.ApplyMatch`) vale come confermata (`ManualMatch`): si rinomina anche senza
+  "Includi bassa confidenza".
+- **Già corretto.** Le righe `Unchanged` non entrano nell'esecuzione né nel conteggio dell'avanzamento
+  (`RenamePlanEntry.NeedsWork`): niente tag né date riscritti su quei file.

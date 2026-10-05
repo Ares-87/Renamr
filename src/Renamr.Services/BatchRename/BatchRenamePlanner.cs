@@ -40,29 +40,56 @@ public sealed class BatchRenamePlanner
         return files;
     }
 
+    /// <summary>
+    /// Un file aggiunto a mano: nessun filtro (l'ha scelto l'utente), recinto = la cartella aperta se ci sta dentro,
+    /// altrimenti la sua cartella. Null se il file non c'è più o non si può leggere.
+    /// </summary>
+    public static BatchFile? Describe(string path, string root)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            return info.Exists ? new BatchFile(info.FullName, info.Length, info.LastWriteTimeUtc, info.CreationTimeUtc) { Root = root } : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Applica regole e ordine ai file già elencati: si richiama a ogni modifica delle regole, senza rileggere la cartella.</summary>
-    public IReadOnlyList<RenamePlanEntry> Plan(string rootFolder, IReadOnlyList<BatchFile> files, BatchRenameOptions options)
+    public IReadOnlyList<RenamePlanEntry> Plan(string? rootFolder, IReadOnlyList<BatchFile> files, BatchRenameOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        var boundary = new PathBoundary(rootFolder);
+        var boundaries = new Dictionary<string, PathBoundary>(StringComparer.Ordinal);
         var sorted = BatchRenameEngine.Sort(files, options.SortBy, options.Descending);
         var results = BatchRenameEngine.Apply(sorted, options.Rules);
 
         var entries = results.Select(r =>
         {
+            var root = r.File.Root ?? rootFolder;
             if (r.Error is { } reason)
             {
-                return Fail(r.File.Path, new RenamrError(RenamrErrorCode.InvalidFileName, reason));
+                return Fail(r.File.Path, new RenamrError(RenamrErrorCode.InvalidFileName, reason)) with { Root = r.File.Root };
+            }
+            if (root is null)
+            {
+                return Fail(r.File.Path, RenamrError.From(RenamrErrorCode.PathOutsideRoot, r.File.Path));
+            }
+            if (!boundaries.TryGetValue(root, out var boundary))
+            {
+                boundaries[root] = boundary = new PathBoundary(root);
             }
             var check = boundary.ResolveTarget(r.File.Folder, r.NewName, out var target);
             if (!check.Succeeded)
             {
-                return Fail(r.File.Path, check.Error!);
+                return Fail(r.File.Path, check.Error!) with { Root = r.File.Root };
             }
             return new RenamePlanEntry
             {
                 SourcePath = r.File.Path,
                 TargetPath = target,
+                Root = r.File.Root,
                 NameOnly = true,
                 Status = string.Equals(r.File.Path, target, StringComparison.Ordinal) ? PlanStatus.Unchanged : PlanStatus.Ready,
             };

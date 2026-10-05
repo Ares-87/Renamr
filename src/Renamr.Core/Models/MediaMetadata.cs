@@ -39,5 +39,10 @@ public sealed record MediaMetadata
     public IReadOnlyList<string> Genres { get; init; } = [];
 
     public string? ImdbId { get; init; }
+
+    /// <summary>Stesso titolo dello stesso database (anche se il titolo dell'episodio è stato preso dal nome file).</summary>
+    public bool IsSameEntry(MediaMetadata? other) =>
+        other is not null && Provider == other.Provider && ProviderId == other.ProviderId
+        && Season == other.Season && Episode == other.Episode && AbsoluteEpisode == other.AbsoluteEpisode;
     public string? Overview { get; init; }
 }

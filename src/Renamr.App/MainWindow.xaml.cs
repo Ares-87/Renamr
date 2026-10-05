@@ -86,7 +86,7 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(nint hwnd);
 
-    // ---- Drag & drop: si accetta una cartella, ovunque nella finestra ----------------------------------------
+    // ---- Drag & drop: una cartella oppure dei file, ovunque nella finestra ------------------------------------
 
     private void Root_DragOver(object sender, DragEventArgs e)
     {
@@ -112,13 +112,16 @@ public sealed partial class MainWindow : Window
         }
 
         var items = await e.DataView.GetStorageItemsAsync();
-        // Cartella trascinata, oppure la cartella che contiene il primo file trascinato.
-        var path = items.OfType<StorageFolder>().FirstOrDefault()?.Path
-                   ?? Path.GetDirectoryName(items.OfType<StorageFile>().FirstOrDefault()?.Path ?? string.Empty);
-
-        if (!string.IsNullOrEmpty(path))
+        // Una cartella apre quella cartella; dei file si aggiungono all'elenco (o ne fanno uno nuovo dalla schermata iniziale).
+        var folder = items.OfType<StorageFolder>().Select(f => f.Path).FirstOrDefault(p => !string.IsNullOrEmpty(p));
+        var files = items.OfType<StorageFile>().Select(f => f.Path).Where(p => !string.IsNullOrEmpty(p)).ToList();
+        if (folder is not null)
         {
-            await ViewModel.OpenFolderCommand.ExecuteAsync(path);
+            await ViewModel.OpenFolderCommand.ExecuteAsync(folder);
+        }
+        if (files.Count > 0)
+        {
+            await ViewModel.AddFilesCommand.ExecuteAsync(files);
         }
     }
 
@@ -270,6 +273,49 @@ public sealed partial class MainWindow : Window
         await ViewModel.SettingsSavedCommand.ExecuteAsync(previousLanguage);
     }
 
+    // ---- Righe: scelta del risultato e "togli dall'elenco" --------------------------------------------------------
+
+    private async void FileList_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is FileItemViewModel item)
+        {
+            await ChooseMatchAsync(item);
+        }
+    }
+
+    private async void ChooseMatch_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is FileItemViewModel item)
+        {
+            await ChooseMatchAsync(item);
+        }
+    }
+
+    private async void RemoveRow_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is FileItemViewModel item)
+        {
+            await ViewModel.RemoveItemCommand.ExecuteAsync(item);
+        }
+    }
+
+    /// <summary>Risultati già trovati e ricerca libera; "Usa questo" applica la scelta alla riga.</summary>
+    private async Task ChooseMatchAsync(FileItemViewModel item)
+    {
+        if (!ViewModel.CanChooseMatch(item))
+        {
+            return;
+        }
+        var picker = ViewModel.CreateMatchPicker(item);
+        var dialog = new MatchPickerDialog(picker) { XamlRoot = Content.XamlRoot };
+        var result = await dialog.ShowAsync();
+        picker.SearchCancelCommand.Execute(null);
+        if ((result == ContentDialogResult.Primary || dialog.Confirmed) && picker.SelectedChoice is { } choice)
+        {
+            ViewModel.ApplyMatch(item, choice.Candidate);
+        }
+    }
+
     // ---- Menu contestuale della lista: formato del nome e lingua al volo -------------------------------------
 
     private static readonly MediaKind[] Kinds = [MediaKind.Movie, MediaKind.Episode, MediaKind.Anime, MediaKind.Music];
@@ -350,10 +396,16 @@ public sealed partial class MainWindow : Window
         ShowMenu(menu, target, args);
     }
 
-    private static void AddFileActions(MenuFlyout menu, FileItemViewModel? item)
+    private void AddFileActions(MenuFlyout menu, FileItemViewModel? item)
     {
         if (item is not null)
         {
+            if (ViewModel.CanChooseMatch(item))
+            {
+                var choose = new MenuFlyoutItem { Text = Strings.Current.ChooseMatch, Icon = new FontIcon { Glyph = "\uE721" } };
+                choose.Click += async (_, _) => await ChooseMatchAsync(item);
+                menu.Items.Add(choose);
+            }
             if (item.Entry.TargetPath is not null)
             {
                 var copy = new MenuFlyoutItem { Text = Strings.Current.MenuCopyNewName, Icon = new FontIcon { Glyph = "\uE8C8" } };
@@ -363,6 +415,9 @@ public sealed partial class MainWindow : Window
             var reveal = new MenuFlyoutItem { Text = Strings.Current.MenuRevealExplorer, Icon = new FontIcon { Glyph = "\uEC50" } };
             reveal.Click += (_, _) => App.Services.GetRequiredService<IShellService>().RevealInExplorer(item.Entry.SourcePath);
             menu.Items.Add(reveal);
+            var remove = new MenuFlyoutItem { Text = Strings.Current.RemoveFromList, Icon = new FontIcon { Glyph = "\uE711" } };
+            remove.Click += async (_, _) => await ViewModel.RemoveItemCommand.ExecuteAsync(item);
+            menu.Items.Add(remove);
         }
     }
 

@@ -222,7 +222,7 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </Border>
             <TextBlock Grid.Column="2"
-                       Text="{x:Bind ViewModel.RootFolder, Mode=OneWay}"
+                       Text="{x:Bind ViewModel.SourceLabel, Mode=OneWay}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Right"
                        TextTrimming="CharacterEllipsis"
@@ -322,15 +322,23 @@
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextAlignment="Center" TextWrapping="Wrap" />
-                <Button Margin="0,12,0,0"
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource AccentButtonStyle}"
-                        Command="{x:Bind ViewModel.PickFolderCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE838;" FontSize="16" />
-                        <TextBlock Text="{x:Bind loc:Strings.Current.PickFolder}" />
-                    </StackPanel>
-                </Button>
+                <!-- Una cartella intera, oppure solo alcuni file (anche da cartelle diverse). -->
+                <StackPanel Margin="0,12,0,0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                    <Button Style="{StaticResource AccentButtonStyle}"
+                            Command="{x:Bind ViewModel.PickFolderCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE838;" FontSize="16" />
+                            <TextBlock Text="{x:Bind loc:Strings.Current.PickFolder}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{x:Bind ViewModel.PickFilesCommand}"
+                            ToolTipService.ToolTip="{x:Bind loc:Strings.Current.AddFilesTip}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE8A5;" FontSize="16" />
+                            <TextBlock Text="{x:Bind loc:Strings.Current.PickFiles}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
                 <!-- Dopo un'analisi annullata o un cambio di modalità: l'analisi online riparte solo da qui. -->
                 <Button HorizontalAlignment="Center"
                         Visibility="{x:Bind ViewModel.CanAnalyzeLastFolder, Mode=OneWay}"
@@ -429,7 +437,12 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Riepilogo a pillole: niente toolbar, solo informazione -->
+            <!-- Riepilogo a pillole: niente toolbar, solo informazione. A destra si aggiungono file singoli. -->
+            <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Border Style="{StaticResource StatusBadgeStyle}" Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}">
                     <TextBlock Style="{StaticResource StatusBadgeTextStyle}" Foreground="{ThemeResource SystemFillColorSuccessBrush}">
@@ -448,6 +461,16 @@
                     </TextBlock>
                 </Border>
             </StackPanel>
+            <Button Grid.Column="1"
+                    Command="{x:Bind ViewModel.PickFilesCommand}"
+                    IsEnabled="{x:Bind ui:Ui.Not(ViewModel.IsBusy), Mode=OneWay}"
+                    ToolTipService.ToolTip="{x:Bind loc:Strings.Current.AddFilesTip}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE710;" FontSize="14" />
+                    <TextBlock Text="{x:Bind loc:Strings.Current.AddFiles}" />
+                </StackPanel>
+            </Button>
+            </Grid>
 
             <!-- Esito dell'esecuzione, con "Annulla" a portata di mano -->
             <InfoBar Grid.Row="1"
@@ -481,6 +504,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="24" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="28" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{x:Bind loc:Strings.Current.ColumnStatus}" Style="{StaticResource ColumnHeaderTextStyle}" />
                 <TextBlock Grid.Column="1" Text="{x:Bind loc:Strings.Current.ColumnOriginal}" Style="{StaticResource ColumnHeaderTextStyle}" />
@@ -488,11 +512,13 @@
             </Grid>
 
             <!-- Tabella a due colonne: Originale ➔ Proposto. ListView virtualizzata: regge decine di migliaia di righe. -->
-            <!-- Tasto destro: formato del nome e lingua al volo. -->
+            <!-- Tasto destro: formato del nome e lingua al volo. Clic su una riga di film o serie: scelta del risultato. -->
             <ListView Grid.Row="4"
                       ItemsSource="{x:Bind ViewModel.Items}"
                       ContextRequested="List_ContextRequested"
                       SelectionMode="None"
+                      IsItemClickEnabled="True"
+                      ItemClick="FileList_ItemClick"
                       Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                       BorderThickness="1"
@@ -500,24 +526,33 @@
                       Padding="0,4">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="vm:FileItemViewModel">
-                        <Grid Padding="4,10" ColumnSpacing="12" Background="Transparent"
-                              ContextRequested="Row_ContextRequested"
-                              Opacity="{x:Bind ui:Ui.RowOpacity(Status), Mode=OneWay}">
+                        <Grid Padding="4,10,0,10" ColumnSpacing="12" Background="Transparent"
+                              ContextRequested="Row_ContextRequested">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="140" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="24" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="28" />
                             </Grid.ColumnDefinitions>
 
-                            <Border Style="{StaticResource StatusBadgeStyle}"
-                                    Background="{x:Bind ui:Ui.StatusBackground(Status), Mode=OneWay}">
-                                <TextBlock Text="{x:Bind StatusText, Mode=OneWay}"
-                                           Style="{StaticResource StatusBadgeTextStyle}"
-                                           Foreground="{x:Bind ui:Ui.StatusForeground(Status), Mode=OneWay}" />
-                            </Border>
+                            <StackPanel Spacing="2" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                        Opacity="{x:Bind ui:Ui.RowOpacity(Status), Mode=OneWay}">
+                                <Border Style="{StaticResource StatusBadgeStyle}"
+                                        Background="{x:Bind ui:Ui.StatusBackground(Status), Mode=OneWay}">
+                                    <TextBlock Text="{x:Bind StatusText, Mode=OneWay}"
+                                               Style="{StaticResource StatusBadgeTextStyle}"
+                                               Foreground="{x:Bind ui:Ui.StatusForeground(Status), Mode=OneWay}" />
+                                </Border>
+                                <HyperlinkButton Content="{x:Bind loc:Strings.Current.ChooseMatchShort}"
+                                                 Click="ChooseMatch_Click"
+                                                 Padding="2,0" FontSize="12" MinHeight="0"
+                                                 Visibility="{x:Bind SuggestsChoice, Mode=OneWay}"
+                                                 ToolTipService.ToolTip="{x:Bind loc:Strings.Current.ChooseMatchTip}" />
+                            </StackPanel>
 
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                        Opacity="{x:Bind ui:Ui.RowOpacity(Status), Mode=OneWay}">
                                 <TextBlock Text="{x:Bind OriginalName, Mode=OneWay}"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTipService.ToolTip="{x:Bind OriginalName, Mode=OneWay}" />
@@ -531,7 +566,8 @@
                             <FontIcon Grid.Column="2" Glyph="&#xE72A;" FontSize="12"
                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
 
-                            <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                            <StackPanel Grid.Column="3" VerticalAlignment="Center"
+                                        Opacity="{x:Bind ui:Ui.RowOpacity(Status), Mode=OneWay}">
                                 <TextBlock Text="{x:Bind ProposedName, Mode=OneWay}"
                                            FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis"
@@ -546,6 +582,14 @@
                                            Foreground="{x:Bind ui:Ui.StatusForeground(Status), Mode=OneWay}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
+
+                            <!-- Togli dall'elenco: il file resta com'è e non torna nemmeno rifacendo l'analisi. -->
+                            <Button Grid.Column="4" Style="{StaticResource RuleIconButtonStyle}" Click="RemoveRow_Click"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="{x:Bind loc:Strings.Current.RemoveFromList}"
+                                    ToolTipService.ToolTip="{x:Bind loc:Strings.Current.RemoveFromList}">
+                                <FontIcon Glyph="&#xE711;" FontSize="12" />
+                            </Button>
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>

@@ -40,6 +40,20 @@ public sealed partial class MainViewModel : ObservableObject
     private (int Ok, int Failed, int Warnings, bool DryRun)? _lastSummary;
     private KeyValuePair<string, RenamrError>[] _lastFailures = [];
 
+    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
+    /// <summary>File aggiunti a mano (anche da altre cartelle), oltre a quelli della cartella aperta.</summary>
+    private readonly List<string> _addedFiles = [];
+
+    /// <summary>File tolti dall'elenco: restano fuori anche quando si rifà l'analisi.</summary>
+    private readonly HashSet<string> _removed = new(PathComparer);
+
+    /// <summary>Solo questi file vanno analizzati alla prossima analisi (aggiunti a un elenco già pronto).</summary>
+    private HashSet<string>? _analyzeOnly;
+
+    /// <summary>Spostamenti dell'ultima ridenominazione vera, per seguire i file aggiunti a mano anche dopo "Annulla".</summary>
+    private List<(string From, string To)> _lastRunMoves = [];
+
     public MainViewModel(IServiceProvider services, IFolderPickerService folderPicker, IMessenger messenger, IssuesViewModel issues)
     {
         _services = services;
@@ -130,8 +144,30 @@ public sealed partial class MainViewModel : ObservableObject
     public partial AppPhase Phase { get; private set; } = AppPhase.SelectFolder;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanAnalyzeLastFolder), nameof(AnalyzeLastFolderText))]
+    [NotifyPropertyChangedFor(nameof(CanAnalyzeLastFolder), nameof(AnalyzeLastFolderText), nameof(SourceLabel), nameof(PrimaryFolder), nameof(HasSources))]
     public partial string? RootFolder { get; private set; }
+
+    /// <summary>C'è qualcosa da analizzare: una cartella aperta o dei file aggiunti.</summary>
+    public bool HasSources => RootFolder is not null || _addedFiles.Count > 0;
+
+    /// <summary>Cartella di riferimento (per l'avviso sulle date su Linux): quella aperta o quella del primo file aggiunto.</summary>
+    public string? PrimaryFolder => RootFolder ?? (_addedFiles.Count > 0 ? Path.GetDirectoryName(_addedFiles[0]) : null);
+
+    /// <summary>In alto a destra: la cartella aperta, "+ N file" se se ne sono aggiunti altri, oppure "N file scelti".</summary>
+    public string SourceLabel
+    {
+        get
+        {
+            var outside = _addedFiles.Count(f => RootFor(f) != RootFolder);
+            return RootFolder switch
+            {
+                null when _addedFiles.Count == 0 => string.Empty,
+                null => S.Format(nameof(Strings.SourceFiles), _addedFiles.Count),
+                _ when outside > 0 => S.Format(nameof(Strings.SourceFolderPlusFiles), RootFolder, outside),
+                _ => RootFolder,
+            };
+        }
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressText), nameof(ProgressValue))]
@@ -205,10 +241,10 @@ public sealed partial class MainViewModel : ObservableObject
     /// Nella schermata iniziale, dopo un'analisi annullata o un cambio di modalità, l'ultima cartella resta a portata
     /// di un clic: l'analisi online riparte solo da qui, mai da sola.
     /// </summary>
-    public bool CanAnalyzeLastFolder => IsSelectPhase && IsMediaMode && RootFolder is not null;
+    public bool CanAnalyzeLastFolder => IsSelectPhase && IsMediaMode && HasSources;
 
     public string AnalyzeLastFolderText => RootFolder is null
-        ? string.Empty
+        ? _addedFiles.Count == 0 ? string.Empty : S.Format(nameof(Strings.AnalyzeFiles), _addedFiles.Count)
         : S.Format(nameof(Strings.AnalyzeFolder), Path.GetFileName(Path.TrimEndingDirectorySeparator(RootFolder)) is { Length: > 0 } name ? name : RootFolder);
     public bool IsPreviewVisible => Phase is AppPhase.Preview or AppPhase.Running or AppPhase.Completed or AppPhase.Analyzing;
     public bool IsBusy => Phase is AppPhase.Analyzing or AppPhase.Running;
@@ -229,9 +265,9 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>Usato sia dal selettore sia dal drag &amp; drop.</summary>
-    [RelayCommand(IncludeCancelCommand = true)]
-    private async Task OpenFolderAsync(string? folder, CancellationToken ct)
+    /// <summary>Usato sia dal selettore sia dal drag &amp; drop: la cartella sostituisce l'elenco di prima.</summary>
+    [RelayCommand]
+    private async Task OpenFolderAsync(string? folder)
     {
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder) || IsBusy)
         {
@@ -240,13 +276,228 @@ public sealed partial class MainViewModel : ObservableObject
 
         // Normalizzazione immediata: da qui in avanti esiste solo il percorso canonico.
         RootFolder = Path.GetFullPath(folder);
-        Items.Clear();
-        _bySource.Clear();
-        _plan = [];
+        _addedFiles.Clear();
+        _removed.Clear();
+        _analyzeOnly = null;
+        NotifySourcesChanged();
+        await AnalyzeCommand.ExecuteAsync(null);
+    }
+
+    /// <summary>"Scegli file…" e "Aggiungi file…": in Film e serie solo i tipi riconosciuti, in Rinomina file qualunque file.</summary>
+    [RelayCommand]
+    private async Task PickFilesAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+        var current = Settings.Current;
+        IReadOnlyCollection<string>? extensions = IsBatchMode ? null : [.. current.VideoExtensions, .. current.AudioExtensions];
+        var files = await _folderPicker.PickFilesAsync(extensions);
+        if (files.Count > 0)
+        {
+            await AddFilesCommand.ExecuteAsync(files);
+        }
+    }
+
+    /// <summary>
+    /// Aggiunge file singoli all'elenco (dal selettore o trascinati). Dalla schermata iniziale l'elenco riparte da questi;
+    /// con un'anteprima già pronta si analizzano solo i file nuovi, senza rifare le ricerche degli altri.
+    /// </summary>
+    [RelayCommand]
+    private async Task AddFilesAsync(IReadOnlyList<string>? paths)
+    {
+        if (paths is null || IsBusy)
+        {
+            return;
+        }
+        if (Phase == AppPhase.SelectFolder)
+        {
+            RootFolder = null;
+            _addedFiles.Clear();
+            _removed.Clear();
+            Items.Clear();
+            _bySource.Clear();
+            _plan = [];
+            _batchFiles = [];
+        }
+
+        var settings = Settings.Current;
+        var fresh = new List<string>();
+        foreach (var path in paths)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                continue;
+            }
+            var full = Path.GetFullPath(path);
+            var extension = Path.GetExtension(full);
+            if (IsMediaMode && !settings.VideoExtensions.Contains(extension) && !settings.AudioExtensions.Contains(extension))
+            {
+                continue; // in Film e serie un documento o una foto non si possono riconoscere
+            }
+            _removed.Remove(full);
+            if (_bySource.ContainsKey(full) || _addedFiles.Contains(full, PathComparer))
+            {
+                continue;
+            }
+            _addedFiles.Add(full);
+            fresh.Add(full);
+        }
+        NotifySourcesChanged();
+        if (fresh.Count == 0 && Phase != AppPhase.SelectFolder)
+        {
+            return;
+        }
+
+        var incremental = IsMediaMode && _plan.Count > 0 && (Phase == AppPhase.Preview || (Phase == AppPhase.Completed && LastRunWasDryRun));
+        _analyzeOnly = incremental ? new HashSet<string>(fresh, PathComparer) : null;
+        if (HasSources)
+        {
+            await AnalyzeCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>Toglie un file dall'elenco: non si rinomina e resta fuori anche se si rifà l'analisi.</summary>
+    [RelayCommand]
+    private async Task RemoveItemAsync(FileItemViewModel? item)
+    {
+        if (item is null || IsBusy)
+        {
+            return;
+        }
+        var path = item.Entry.SourcePath;
+        _removed.Add(path);
+        _addedFiles.RemoveAll(f => PathComparer.Equals(f, path));
+        Items.Remove(item);
+        _bySource.Remove(path);
+        NotifySourcesChanged();
+
+        var rest = _plan.Where(e => !PathComparer.Equals(e.SourcePath, path)).ToList();
+        if (IsBatchMode)
+        {
+            // La numerazione e i conflitti dipendono dagli altri file: si ricalcola l'anteprima delle regole.
+            _batchFiles = [.. _batchFiles.Where(f => !PathComparer.Equals(f.Path, path))];
+            _plan = rest;
+            if (Phase == AppPhase.Preview || (Phase == AppPhase.Completed && LastRunWasDryRun))
+            {
+                await RefreshBatchPreviewAsync();
+                return;
+            }
+        }
+        else
+        {
+            // Il nome che il file avrebbe preso si libera: un'altra riga in conflitto può tornare pronta.
+            var stale = Phase == AppPhase.Completed && !LastRunWasDryRun;
+            _plan = stale ? rest : _services.GetRequiredService<RenamePlanner>().Rerender(RootFolder, rest);
+            if (!stale)
+            {
+                ShowPlan("Rimozione");
+                return;
+            }
+        }
+        RecountStatuses();
+    }
+
+    // ---- Scelta manuale della corrispondenza ----------------------------------------------------------------
+
+    /// <summary>Si può scegliere solo in anteprima (dopo una ridenominazione vera il piano non descrive più il disco).</summary>
+    public bool CanChooseMatch(FileItemViewModel? item) =>
+        item is { CanChooseMatch: true } && IsMediaMode && !IsBusy && (Phase == AppPhase.Preview || (Phase == AppPhase.Completed && LastRunWasDryRun));
+
+    /// <summary>La finestra di scelta per una riga: risultati già trovati e ricerca libera su tutti i database adatti.</summary>
+    public MatchPickerViewModel CreateMatchPicker(FileItemViewModel item)
+    {
+        var resolver = _services.GetRequiredService<IMetadataResolver>();
+        return new MatchPickerViewModel(item, (query, ct) => Task.Run(() => resolver.SearchAllAsync(query, ct), ct));
+    }
+
+    /// <summary>Il risultato scelto dall'utente diventa quello della riga, che si rinomina come una corrispondenza sicura.</summary>
+    public void ApplyMatch(FileItemViewModel item, MatchCandidate candidate)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        ArgumentNullException.ThrowIfNull(candidate);
+        if (!CanChooseMatch(item))
+        {
+            return;
+        }
+        _plan = _services.GetRequiredService<RenamePlanner>().ApplyMatch(RootFolder, _plan, item.Entry.SourcePath, candidate);
+        ShowPlan("Scelta");
+    }
+
+    /// <summary>Righe aggiornate al loro posto (la lista non salta), avvisi ripubblicati, contatori e fase di anteprima.</summary>
+    private void ShowPlan(string reason)
+    {
+        _messenger.Send(new RunStartedMessage(reason));
+        var sameRows = Items.Count == _plan.Count && Items.Select(i => i.Entry.SourcePath).SequenceEqual(_plan.Select(e => e.SourcePath), StringComparer.Ordinal);
+        if (!sameRows)
+        {
+            Items.Clear();
+            _bySource.Clear();
+        }
+        foreach (var entry in _plan)
+        {
+            AddOrUpdate(entry, publishIssue: false);
+            PublishIssue(entry, "Analisi");
+        }
+        RecountStatuses();
+        IsSummaryOpen = false;
+        LastRunWasDryRun = false;
+        Phase = AppPhase.Preview;
+    }
+
+    /// <summary>Cartella-recinto di un file aggiunto: la cartella aperta se ci sta dentro, altrimenti la sua.</summary>
+    private string RootFor(string file)
+    {
+        if (RootFolder is not null)
+        {
+            try
+            {
+                if (new Renamr.Services.IO.PathBoundary(RootFolder).IsStrictDescendant(file))
+                {
+                    return RootFolder;
+                }
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException)
+            {
+                // cartella sparita: il file fa da sé
+            }
+        }
+        return Path.GetDirectoryName(file)!;
+    }
+
+    private void NotifySourcesChanged()
+    {
+        OnPropertyChanged(nameof(HasSources));
+        OnPropertyChanged(nameof(SourceLabel));
+        OnPropertyChanged(nameof(PrimaryFolder));
+        OnPropertyChanged(nameof(CanAnalyzeLastFolder));
+        OnPropertyChanged(nameof(AnalyzeLastFolderText));
+    }
+
+    /// <summary>Analizza l'elenco corrente: la cartella aperta, più i file aggiunti, meno quelli tolti.</summary>
+    [RelayCommand(IncludeCancelCommand = true)]
+    private async Task AnalyzeAsync(CancellationToken ct)
+    {
+        if (!HasSources || IsBusy)
+        {
+            return;
+        }
+
+        var only = _analyzeOnly;
+        _analyzeOnly = null;
+        var previousPlan = _plan;
+        if (only is null)
+        {
+            Items.Clear();
+            _bySource.Clear();
+            _plan = [];
+        }
         IsSummaryOpen = false;
         CanUndo = false;
         LastRunWasDryRun = false;
         _messenger.Send(new RunStartedMessage("Analisi"));
+        var previousPhase = Phase;
         Phase = AppPhase.Analyzing;
 
         var progress = new Progress<RenameProgress>(OnProgress);
@@ -255,24 +506,49 @@ public sealed partial class MainViewModel : ObservableObject
         ProviderWarning = null;
         IsProviderWarningOpen = false;
         _lastFailures = [];
+        var root = RootFolder;
+        var current = Settings.Current;
+        var added = _addedFiles
+            .Where(f => !_removed.Contains(f))
+            // Passando da "Rinomina file" a "Film e serie" i documenti e le foto aggiunti restano fuori.
+            .Where(f => IsBatchMode || current.VideoExtensions.Contains(Path.GetExtension(f)) || current.AudioExtensions.Contains(Path.GetExtension(f)))
+            .Select(f => new PlanSource(f, RootFor(f)))
+            .ToList();
+        var removed = new HashSet<string>(_removed, PathComparer);
         try
         {
             IReadOnlyList<RenamePlanEntry> plan;
             if (IsBatchMode)
             {
-                var root = RootFolder;
                 var options = Batch.ToOptions();
                 var batchPlanner = _services.GetRequiredService<BatchRenamePlanner>();
                 (_batchFiles, plan) = await Task.Run(() =>
                 {
-                    var files = batchPlanner.Scan(root, options);
-                    return (files, batchPlanner.Plan(root, files, options));
+                    var files = (root is null ? [] : batchPlanner.Scan(root, options)).Where(f => !removed.Contains(f.Path)).ToList();
+                    var known = new HashSet<string>(files.Select(f => f.Path), PathComparer);
+                    files.AddRange(added.Where(a => known.Add(a.Path)).Select(a => BatchRenamePlanner.Describe(a.Path, a.Root)).OfType<BatchFile>());
+                    return ((IReadOnlyList<BatchFile>)files, batchPlanner.Plan(root, files, options));
                 }, ct);
             }
             else
             {
                 var planner = _services.GetRequiredService<RenamePlanner>();
-                plan = await Task.Run(() => planner.PlanAsync(RootFolder, progress, ct), ct);
+                var scanner = _services.GetRequiredService<MediaScanner>();
+                var sources = await Task.Run(() =>
+                {
+                    var list = root is null
+                        ? []
+                        : scanner.Scan(new Renamr.Services.IO.PathBoundary(root)).Where(f => !removed.Contains(f)).Select(f => new PlanSource(f, root)).ToList();
+                    var known = new HashSet<string>(list.Select(f => f.Path), PathComparer);
+                    list.AddRange(added.Where(a => known.Add(a.Path)));
+                    return only is null ? list : list.Where(f => only.Contains(f.Path)).ToList();
+                }, ct);
+                plan = await Task.Run(() => planner.PlanFilesAsync(sources, progress, ct), ct);
+                if (only is not null)
+                {
+                    // Le righe di prima restano com'erano (anche le scelte fatte a mano); si ricontrollano solo i conflitti.
+                    plan = planner.Rerender(root, [.. previousPlan, .. plan]);
+                }
             }
             // Il planner chiude senza eccezioni quando si annulla: il piano parziale va scartato qui.
             ct.ThrowIfCancellationRequested();
@@ -294,12 +570,19 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            if (only is not null)
+            {
+                // Annullata l'aggiunta: l'elenco di prima resta com'era.
+                _plan = previousPlan;
+                ShowPlan("Analisi");
+                return;
+            }
             Phase = Items.Count > 0 ? AppPhase.Preview : AppPhase.SelectFolder;
         }
         catch (Exception ex) when (ex is DirectoryNotFoundException or UnauthorizedAccessException or ArgumentException or IOException)
         {
-            _messenger.Send(new FileIssueMessage(folder, RenamrError.From(RenamrErrorCode.AccessDenied, ex.Message), "Analisi"));
-            Phase = AppPhase.SelectFolder;
+            _messenger.Send(new FileIssueMessage(root ?? added.FirstOrDefault()?.Path ?? string.Empty, RenamrError.From(RenamrErrorCode.AccessDenied, ex.Message), "Analisi"));
+            Phase = only is not null && previousPhase != AppPhase.SelectFolder ? previousPhase : AppPhase.SelectFolder;
         }
     }
 
@@ -310,7 +593,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRun), IncludeCancelCommand = true)]
     private async Task RunAsync(CancellationToken ct)
     {
-        var root = RootFolder!;
+        var root = RootFolder;
         var output = Settings.Current.Output;
         var options = new RenameRunOptions
         {
@@ -352,6 +635,13 @@ public sealed partial class MainViewModel : ObservableObject
         }
         RecountStatuses();
 
+        if (!options.DryRun)
+        {
+            // I file aggiunti a mano seguono il loro nuovo nome: rifacendo l'analisi restano nell'elenco.
+            _lastRunMoves = [.. results.Where(r => r is { Status: PlanStatus.Done, TargetPath: not null }).Select(r => (r.SourcePath, r.TargetPath!))];
+            FollowAddedFiles(_lastRunMoves);
+        }
+
         var ok = results.Count(r => r.Status is PlanStatus.Done or PlanStatus.Simulated);
         var failed = results.Count(r => r.Status == PlanStatus.Error && r.Error is { IsWarning: false });
         var warnings = results.Count(r => r.Status == PlanStatus.Done && r.Error is not null);
@@ -370,7 +660,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private async Task UndoAsync()
     {
-        if (_lastJournal is null || RootFolder is null)
+        if (_lastJournal is null || !HasSources)
         {
             return;
         }
@@ -379,18 +669,32 @@ public sealed partial class MainViewModel : ObservableObject
         var errors = await Task.Run(() => executor.UndoAsync(_lastJournal, CancellationToken.None));
         foreach (var error in errors)
         {
-            _messenger.Send(new FileIssueMessage(error.Detail ?? RootFolder, error, "Annulla"));
+            _messenger.Send(new FileIssueMessage(error.Detail ?? PrimaryFolder ?? string.Empty, error, "Annulla"));
         }
-        await OpenFolderCommand.ExecuteAsync(RootFolder); // ricalcola l'anteprima sullo stato reale del disco
+        FollowAddedFiles(_lastRunMoves.Select(m => (m.To, m.From)));
+        _lastRunMoves = [];
+        await AnalyzeCommand.ExecuteAsync(null); // ricalcola l'anteprima sullo stato reale del disco
+    }
+
+    private void FollowAddedFiles(IEnumerable<(string From, string To)> moves)
+    {
+        foreach (var (from, to) in moves)
+        {
+            var i = _addedFiles.FindIndex(f => PathComparer.Equals(f, from));
+            if (i >= 0)
+            {
+                _addedFiles[i] = to;
+            }
+        }
     }
 
     /// <summary>Un solo pulsante "Annulla" per l'analisi e per l'esecuzione.</summary>
     [RelayCommand]
     private void Cancel()
     {
-        if (OpenFolderCommand.IsRunning)
+        if (AnalyzeCommand.IsRunning)
         {
-            OpenFolderCancelCommand.Execute(null);
+            AnalyzeCancelCommand.Execute(null);
         }
         if (RunCommand.IsRunning)
         {
@@ -411,6 +715,10 @@ public sealed partial class MainViewModel : ObservableObject
         _plan = [];
         _batchFiles = [];
         RootFolder = null;
+        _addedFiles.Clear();
+        _removed.Clear();
+        _lastRunMoves = [];
+        NotifySourcesChanged();
         IsSummaryOpen = false;
         Phase = AppPhase.SelectFolder;
         _messenger.Send(new RunStartedMessage("Reset"));
@@ -418,10 +726,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Dopo una simulazione si può tornare all'anteprima e lanciare quella vera.</summary>
     [RelayCommand]
-    private Task ReanalyzeAsync() => OpenFolderCommand.ExecuteAsync(RootFolder);
+    private Task ReanalyzeAsync() => AnalyzeCommand.ExecuteAsync(null);
 
     [RelayCommand]
-    private Task AnalyzeLastFolderAsync() => OpenFolderCommand.ExecuteAsync(RootFolder);
+    private Task AnalyzeLastFolderAsync() => AnalyzeCommand.ExecuteAsync(null);
 
     // ---- Lingua e formato al volo ---------------------------------------------------------------
 
@@ -627,6 +935,7 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(DropZoneTitle));
         OnPropertyChanged(nameof(DropZoneHint));
         OnPropertyChanged(nameof(AnalyzeLastFolderText));
+        OnPropertyChanged(nameof(SourceLabel));
         OnPropertyChanged(nameof(PrimaryActionText));
         SyncFromSettings();
         DescribeSummary();
@@ -642,16 +951,16 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Rifà le ricerche solo se c'è un'analisi a schermo: nella schermata iniziale decide l'utente.</summary>
     private async Task ReanalyzeIfOpenAsync()
     {
-        if (RootFolder is not null && !IsBusy && Phase != AppPhase.SelectFolder)
+        if (HasSources && !IsBusy && Phase != AppPhase.SelectFolder)
         {
-            await OpenFolderCommand.ExecuteAsync(RootFolder);
+            await AnalyzeCommand.ExecuteAsync(null);
         }
     }
 
     /// <summary>Nuovi nomi con i template correnti, senza rifare le ricerche online.</summary>
     private async Task RefreshNamesAsync()
     {
-        if (RootFolder is null || IsBusy || _plan.Count == 0)
+        if (!HasSources || IsBusy || _plan.Count == 0)
         {
             return;
         }
@@ -663,18 +972,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         _plan = _services.GetRequiredService<RenamePlanner>().Rerender(RootFolder, _plan);
-        _messenger.Send(new RunStartedMessage("Formato"));
-        Items.Clear();
-        _bySource.Clear();
-        foreach (var entry in _plan)
-        {
-            AddOrUpdate(entry, publishIssue: false);
-            PublishIssue(entry, "Analisi");
-        }
-        RecountStatuses();
-        IsSummaryOpen = false;
-        LastRunWasDryRun = false;
-        Phase = AppPhase.Preview;
+        ShowPlan("Formato");
     }
 
     // ---- Modalità "Rinomina file" ------------------------------------------------------------------
@@ -688,13 +986,13 @@ public sealed partial class MainViewModel : ObservableObject
         IsLanguageHintOpen = LanguageHint is not null && !value;
         IsProviderWarningOpen = false;
         SaveBatchState();
-        if (RootFolder is null || IsBusy)
+        if (!HasSources || IsBusy)
         {
             return;
         }
         if (value)
         {
-            OpenFolderCommand.Execute(RootFolder); // solo lettura locale della cartella: immediata
+            AnalyzeCommand.Execute(null); // solo lettura locale della cartella: immediata
             return;
         }
 
@@ -737,7 +1035,7 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task RefreshBatchPreviewAsync(bool rescan = false)
     {
         SaveBatchState();
-        if (!IsBatchMode || RootFolder is null || Phase == AppPhase.SelectFolder)
+        if (!IsBatchMode || !HasSources || Phase == AppPhase.SelectFolder)
         {
             return;
         }
@@ -748,7 +1046,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         if (rescan || (Phase == AppPhase.Completed && !LastRunWasDryRun))
         {
-            await OpenFolderCommand.ExecuteAsync(RootFolder);
+            await AnalyzeCommand.ExecuteAsync(null);
             return;
         }
 
@@ -797,7 +1095,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         else
         {
-            item = new FileItemViewModel(entry, RootFolder!);
+            item = new FileItemViewModel(entry, RootFolder);
             _bySource[entry.SourcePath] = item;
             Items.Add(item);
         }
