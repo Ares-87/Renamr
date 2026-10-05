@@ -60,7 +60,7 @@
                     <StackPanel Spacing="8">
                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
                         <ComboBox HorizontalAlignment="Stretch"
-                                  ItemsSource="{x:Bind vm:NumberingRuleViewModel.Positions}"
+                                  ItemsSource="{x:Bind PositionNames}"
                                   SelectedIndex="{x:Bind PositionIndex, Mode=TwoWay}" />
                         <Grid ColumnSpacing="8" RowSpacing="8">
                             <Grid.ColumnDefinitions>
@@ -123,7 +123,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <ComboBox HorizontalAlignment="Stretch"
-                                      ItemsSource="{x:Bind vm:InsertTextRuleViewModel.Positions}"
+                                      ItemsSource="{x:Bind PositionNames}"
                                       SelectedIndex="{x:Bind PositionIndex, Mode=TwoWay}" />
                             <NumberBox Grid.Column="1" Width="110" Value="{x:Bind Index, Mode=TwoWay}" Minimum="0"
                                        SpinButtonPlacementMode="Compact" Visibility="{x:Bind IsAtIndex, Mode=OneWay}" />
@@ -137,7 +137,7 @@
                     <StackPanel Spacing="8">
                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
                         <ComboBox HorizontalAlignment="Stretch"
-                                  ItemsSource="{x:Bind vm:RemoveCharactersRuleViewModel.Modes}"
+                                  ItemsSource="{x:Bind ModeNames}"
                                   SelectedIndex="{x:Bind ModeIndex, Mode=TwoWay}" />
                         <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
@@ -157,7 +157,7 @@
                     <StackPanel Spacing="8">
                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
                         <ComboBox HorizontalAlignment="Stretch"
-                                  ItemsSource="{x:Bind vm:ChangeCaseRuleViewModel.Modes}"
+                                  ItemsSource="{x:Bind ModeNames}"
                                   SelectedIndex="{x:Bind ModeIndex, Mode=TwoWay}" />
                     </StackPanel>
                 </Border>
@@ -208,7 +208,7 @@
                     <StackPanel Spacing="8">
                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RuleHeader}" HorizontalContentAlignment="Stretch" />
                         <ComboBox HorizontalAlignment="Stretch"
-                                  ItemsSource="{x:Bind vm:ExtensionRuleViewModel.Modes}"
+                                  ItemsSource="{x:Bind ModeNames}"
                                   SelectedIndex="{x:Bind ModeIndex, Mode=TwoWay}" />
                         <TextBox Text="{x:Bind NewExtension, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="jpg"
                                  Visibility="{x:Bind IsReplace, Mode=OneWay}" />

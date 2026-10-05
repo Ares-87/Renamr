@@ -135,6 +135,10 @@ public sealed partial class NumberingRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Positions => [Strings.Current.PositionStart, Strings.Current.PositionEnd, Strings.Current.PositionReplaceName];
 
+    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
+    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
+    public IReadOnlyList<string> PositionNames => Positions;
+
     [ObservableProperty]
     public partial int PositionIndex { get; set; } = (int)NumberPosition.End;
 
@@ -210,6 +214,10 @@ public sealed partial class InsertTextRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Positions => [Strings.Current.PositionStart, Strings.Current.PositionEnd, Strings.Current.PositionAfterChars];
 
+    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
+    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
+    public IReadOnlyList<string> PositionNames => Positions;
+
     [ObservableProperty]
     public partial string Text { get; set; } = string.Empty;
 
@@ -239,6 +247,10 @@ public sealed partial class RemoveCharactersRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Modes => [Strings.Current.RemoveFirst, Strings.Current.RemoveLast, Strings.Current.RemoveRange];
 
+    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
+    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
+    public IReadOnlyList<string> ModeNames => Modes;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRange))]
     public partial int ModeIndex { get; set; }
@@ -267,6 +279,10 @@ public sealed partial class RemoveCharactersRuleViewModel : BatchRuleViewModel
 public sealed partial class ChangeCaseRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Modes => [Strings.Current.CaseLower, Strings.Current.CaseUpper, Strings.Current.CaseTitle, Strings.Current.CaseSentence];
+
+    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
+    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
+    public IReadOnlyList<string> ModeNames => Modes;
 
     [ObservableProperty]
     public partial int ModeIndex { get; set; } = (int)CaseMode.TitleCase;
@@ -343,6 +359,10 @@ public sealed partial class LettersToDigitsRuleViewModel : BatchRuleViewModel
 public sealed partial class ExtensionRuleViewModel : BatchRuleViewModel
 {
     public static IReadOnlyList<string> Modes => [Strings.Current.ExtensionLower, Strings.Current.ExtensionUpper, Strings.Current.ExtensionReplace];
+
+    /// <summary>Le stesse voci per x:Bind nei DataTemplate di WinUI: una proprietà dell'istanza si aggiorna prima di
+    /// SelectedIndex, una statica dopo, e la ComboBox restava vuota.</summary>
+    public IReadOnlyList<string> ModeNames => Modes;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReplace))]
