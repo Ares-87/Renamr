@@ -19,8 +19,32 @@ public static class Win {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
     [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct DEVMODE {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
+        public short dmSpecVersion, dmDriverVersion, dmSize, dmDriverExtra;
+        public int dmFields, dmPositionX, dmPositionY, dmDisplayOrientation, dmDisplayFixedOutput;
+        public short dmColor, dmDuplex, dmYResolution, dmTTOption, dmCollate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
+        public short dmLogPixels;
+        public int dmBitsPerPel, dmPelsWidth, dmPelsHeight, dmDisplayFlags, dmDisplayFrequency;
+        public int dmICMMethod, dmICMIntent, dmMediaType, dmDitherType, dmReserved1, dmReserved2, dmPanningWidth, dmPanningHeight;
+    }
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool EnumDisplaySettings(string device, int mode, ref DEVMODE dm);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int ChangeDisplaySettings(ref DEVMODE dm, int flags);
+
+    // The runner's screen is 1024x768, smaller than the app window: ask for 1920x1080.
+    public static int SetResolution(int width, int height) {
+        var dm = new DEVMODE(); dm.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+        EnumDisplaySettings(null, -1, ref dm);
+        dm.dmPelsWidth = width; dm.dmPelsHeight = height; dm.dmFields = 0x80000 | 0x100000;
+        return ChangeDisplaySettings(ref dm, 0);
+    }
 }
 '@
+Write-Host "Screen resolution change: $([Win]::SetResolution(1920, 1080)) (0 = done)"
+Start-Sleep -Seconds 2
 
 # Demo library: plain titles and years only, nothing else in the names.
 $film = 'D:\Film'
@@ -65,7 +89,8 @@ function Save-Window([string] $Name, [string[]] $Arguments, [int] $WaitSeconds) 
     }
     if ($process.MainWindowHandle -eq 0) { throw "No window for $Name" }
     $h = $process.MainWindowHandle
-    [Win]::SetWindowPos($h, [IntPtr]::Zero, 0, 0, 0, 0, 0x0001 -bor 0x0004) | Out-Null  # move only
+    # 1360x900 visible, like the Linux screenshots (plus the invisible 7-pixel resize borders of Windows).
+    [Win]::SetWindowPos($h, [IntPtr]::Zero, 0, 0, 1374, 907, 0x0004) | Out-Null
     [Win]::SetForegroundWindow($h) | Out-Null
     Start-Sleep -Seconds $WaitSeconds
 

@@ -30,9 +30,10 @@ jobs:
         run: |
           dotnet publish src/Renamr.App -c Release -r win-x64 -p:Platform=x64 --self-contained -o out/Renamr
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Start the fake databases
+      - name: Take the screenshots
         shell: pwsh
         run: |
+          # The fake databases run in this same step: the runner stops what a step started when the step ends.
           python -m pip install --quiet cryptography
           $env:MOCK_DIR = "$PWD\mock"
           New-Item -ItemType Directory mock | Out-Null
@@ -40,14 +41,11 @@ jobs:
           $deadline = (Get-Date).AddSeconds(60)
           while (-not (Test-Path mock/ca.pem) -and (Get-Date) -lt $deadline) { Start-Sleep 1 }
           Start-Sleep 2
-          certutil -addstore Root mock/ca.pem
+          certutil -addstore Root mock/ca.pem | Out-Null
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Take the screenshots
-        shell: pwsh
-        env:
-          HTTPS_PROXY: http://127.0.0.1:8899
-          HTTP_PROXY: http://127.0.0.1:8899
-        run: ./build/screenshots/windows.ps1 -AppDir out/Renamr -OutDir docs/screenshots
+          $env:HTTPS_PROXY = 'http://127.0.0.1:8899'
+          $env:HTTP_PROXY = 'http://127.0.0.1:8899'
+          ./build/screenshots/windows.ps1 -AppDir out/Renamr -OutDir docs/screenshots
       - name: Fake database log
         if: always()
         shell: pwsh
